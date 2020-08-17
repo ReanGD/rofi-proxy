@@ -1,4 +1,3 @@
-#include <iostream>
 #include <exception>
 
 #include <rofi/mode.h>
@@ -26,7 +25,7 @@ static int ProxyInit(Mode *sw) {
             if (proxy != nullptr) {
                 delete proxy;
             }
-            std::cerr << "ProxyInit: failed with error: " << e.what() << std::endl;
+            fprintf(stderr, "ProxyInit: finished with error: %s\n", e.what());
             return FALSE;
         }
     }
@@ -40,7 +39,7 @@ static void ProxyDestroy(Mode *sw) {
         try {
             delete proxy;
         } catch(const std::exception& e) {
-            std::cerr << "ProxyDestroy: failed with error: " << e.what() << std::endl;
+            fprintf(stderr, "ProxyDestroy: finished with error: %s\n", e.what());
         }
         mode_set_private_data(sw, nullptr);
     }
@@ -48,10 +47,9 @@ static void ProxyDestroy(Mode *sw) {
 
 static unsigned int ProxyGetNumEntries(const Mode *sw) {
     try {
-        const auto* proxy = GetProxy(sw);
-        return static_cast<unsigned int>(proxy->GetLinesCount());
+        return static_cast<unsigned int>(GetProxy(sw)->GetLinesCount());
     } catch(const std::exception& e) {
-        std::cerr << "ProxyGetNumEntries: failed with error: " << e.what() << std::endl;
+        fprintf(stderr, "ProxyGetNumEntries: finished with error: %s\n", e.what());
         return 0;
     }
 }
@@ -76,10 +74,9 @@ static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsig
 
 static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned int index) {
     try {
-        const auto* proxy = GetProxy(sw);
-        return proxy->TokenMatch(tokens, static_cast<size_t>(index)) ? TRUE : FALSE;
+        return GetProxy(sw)->TokenMatch(tokens, static_cast<size_t>(index)) ? TRUE : FALSE;
     } catch(const std::exception& e) {
-        std::cerr << "ProxyTokenMatch: failed with error: " << e.what() << std::endl;
+        fprintf(stderr, "ProxyTokenMatch: finished with error: %s\n", e.what());
         return FALSE;
     }
 }
@@ -90,10 +87,9 @@ static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, G_G
     }
 
     try {
-        const auto* proxy = GetProxy(sw);
-        return g_strdup(proxy->GetLine(static_cast<size_t>(selectedLine)));
+        return g_strdup(GetProxy(sw)->GetLine(static_cast<size_t>(selectedLine)));
     } catch(const std::exception& e) {
-        std::cerr << "ProxyGetDisplayValue: failed with error: " << e.what() << std::endl;
+        fprintf(stderr, "ProxyGetDisplayValue: finished with error: %s\n", e.what());
         return nullptr;
     }
 }
