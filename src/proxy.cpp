@@ -1,8 +1,8 @@
 #include "proxy.h"
 
-#include <string>
 #include <cstdlib>
 #include <filesystem>
+#include <rofi/helper.h>
 
 
 namespace {
@@ -33,12 +33,36 @@ void Proxy::Init() {
     if (m_log == nullptr) {
         throw std::runtime_error("could not open log file");
     }
+    m_lines.push_back("aaa1");
+    m_lines.push_back("aaa2");
+    m_lines.push_back("aaa3");
 
     fputs("Init\n", m_log);
 }
 
-unsigned int Proxy::GetLinesCount() const {
-    return 0;
+size_t Proxy::GetLinesCount() const {
+    fputs("GetLinesCount\n", m_log);
+    return m_lines.size();
+}
+
+const char* Proxy::GetLine(size_t index) const {
+    std::string logMsg = "GetLine " + std::to_string(index) + "\n";
+    fputs(logMsg.c_str(), m_log);
+    if (index >= m_lines.size()) {
+        return nullptr;
+    }
+
+    return m_lines[index].c_str();
+}
+
+bool Proxy::TokenMatch(rofi_int_matcher **tokens, size_t index) const {
+    std::string logMsg = "TokenMatch " + std::to_string(index) + "\n";
+    fputs(logMsg.c_str(), m_log);
+    if (index >= m_lines.size()) {
+        return false;
+    }
+
+    return helper_token_match(tokens, m_lines[index].c_str()) == TRUE;
 }
 
 Proxy::~Proxy() {

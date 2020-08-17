@@ -2,7 +2,6 @@
 #include <exception>
 
 #include <rofi/mode.h>
-#include <rofi/helper.h>
 #include <rofi/mode-private.h>
 
 #include "proxy.h"
@@ -48,9 +47,9 @@ static void ProxyDestroy(Mode *sw) {
 }
 
 static unsigned int ProxyGetNumEntries(const Mode *sw) {
-    const auto* proxy = GetProxy(sw);
     try {
-        return proxy->GetLinesCount();
+        const auto* proxy = GetProxy(sw);
+        return static_cast<unsigned int>(proxy->GetLinesCount());
     } catch(const std::exception& e) {
         std::cerr << "ProxyGetNumEntries: failed with error: " << e.what() << std::endl;
         return 0;
@@ -75,14 +74,28 @@ static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsig
     return retv;
 }
 
-static int ProxyTokenMatch(const Mode */* sw */, rofi_int_matcher **tokens, unsigned int /* index */) {
-    return helper_token_match(tokens, "aaa");
+static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned int index) {
+    try {
+        const auto* proxy = GetProxy(sw);
+        return proxy->TokenMatch(tokens, static_cast<size_t>(index)) ? TRUE : FALSE;
+    } catch(const std::exception& e) {
+        std::cerr << "ProxyTokenMatch: failed with error: " << e.what() << std::endl;
+        return FALSE;
+    }
 }
 
-static char* ProxyGetDisplayValue(const Mode */* sw */, unsigned int /* selected_line */, G_GNUC_UNUSED int *state, G_GNUC_UNUSED GList **attr_list, int get_entry) {
-    // Only return the string if requested, otherwise only set state.
-    // return get_entry ? g_strdup("n/a"): NULL;
-    return get_entry ? g_strdup("aaa"): NULL;
+static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, G_GNUC_UNUSED int */* state */, G_GNUC_UNUSED GList **/* attrList */, int getEntry) {
+    if (!getEntry) {
+        return nullptr;
+    }
+
+    try {
+        const auto* proxy = GetProxy(sw);
+        return g_strdup(proxy->GetLine(static_cast<size_t>(selectedLine)));
+    } catch(const std::exception& e) {
+        std::cerr << "ProxyGetDisplayValue: failed with error: " << e.what() << std::endl;
+        return nullptr;
+    }
 }
 
 Mode mode = {
