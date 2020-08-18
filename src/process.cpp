@@ -4,15 +4,18 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <glib.h>
 #pragma GCC diagnostic pop
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdexcept>
+
+#include "proxy_base.h"
 
 
 namespace {
 
 static void onProcessExit(GPid pid, gint status, gpointer context) {
-    fprintf(stderr, "Child %" G_PID_FORMAT " exited %s\n", pid, g_spawn_check_exit_status (status, NULL) ? "normally" : "abnormally");
+    fprintf(stderr, "Child %" G_PID_FORMAT " exited %s\n", pid, g_spawn_check_exit_status(status, nullptr) ? "normally" : "abnormally");
     if (context != nullptr) {
         auto* process = reinterpret_cast<Process*>(context);
         process->Destroy();
@@ -21,15 +24,42 @@ static void onProcessExit(GPid pid, gint status, gpointer context) {
     exit(0);
 }
 
-static int onProcessInput(GIOChannel */* source */, GIOCondition /* condition */, gpointer /* context */) {
+static int onProcessInput(GIOChannel *source, GIOCondition /* condition */, gpointer context) {
+    static GString* buffer = g_string_sized_new(1024);
+
+    gunichar unichar;
+    GError* error = nullptr;
+    GIOStatus status = g_io_channel_read_unichar(source, &unichar, &error);
+
+    //when there is nothing to read, status is G_IO_STATUS_AGAIN
+    while (status == G_IO_STATUS_NORMAL) {
+        g_string_append_unichar(buffer, unichar);
+        if (unichar == '\n') {
+            if (buffer->len > 1) { //input is not an empty line
+                if (context != nullptr) {
+                    auto* process = reinterpret_cast<Process*>(context);
+                    process->OnNewLine(buffer->str);
+                }
+            }
+            g_string_set_size(buffer, 0);
+        }
+        status = g_io_channel_read_unichar(source, &unichar, &error);
+    }
+
+    if (status == G_IO_STATUS_ERROR) {
+        fprintf(stderr, "Child process stdout error: %s\n", error->message);
+        g_error_free(error);
+    }
+
     return G_SOURCE_CONTINUE;
 }
 
 }
 
-Process::Process()
+Process::Process(ProxyBase* parent)
     : m_readFd(STDIN_FILENO)
-    , m_writeFd(STDOUT_FILENO) {
+    , m_writeFd(STDOUT_FILENO)
+    , m_parent(parent) {
 }
 
 Process::~Process() {
@@ -47,7 +77,7 @@ void Process::Create(char **argv) {
     SetNonBlockFlag(m_readFd);
     m_readCh = g_io_channel_unix_new(m_readFd);
     m_writeCh = g_io_channel_unix_new(m_writeFd);
-    m_readChWatcher = g_io_add_watch(m_readCh, G_IO_IN, onProcessInput, nullptr);
+    m_readChWatcher = g_io_add_watch(m_readCh, G_IO_IN, onProcessInput, this);
 }
 
 void Process::Destroy() {
@@ -76,6 +106,12 @@ void Process::Destroy() {
     if (m_writeFd != STDOUT_FILENO) {
         close(m_writeFd);
         m_writeFd = STDOUT_FILENO;
+    }
+}
+
+void Process::OnNewLine(const char* text) {
+    if (m_parent != nullptr) {
+        m_parent->OnNewLine(text);
     }
 }
 

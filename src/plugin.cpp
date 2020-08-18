@@ -54,7 +54,7 @@ static unsigned int ProxyGetNumEntries(const Mode *sw) {
     }
 }
 
-static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsigned int /* selected_line */) {
+static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsigned int /* selectedLine */) {
     ModeMode retv = MODE_EXIT;
 
     if (mretv & MENU_NEXT) {
@@ -81,7 +81,7 @@ static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned i
     }
 }
 
-static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, G_GNUC_UNUSED int */* state */, G_GNUC_UNUSED GList **/* attrList */, int getEntry) {
+static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, int */* state */, GList **/* attrList */, int getEntry) {
     if (!getEntry) {
         return nullptr;
     }
@@ -98,18 +98,19 @@ Mode mode = {
     .abi_version        = ABI_VERSION,
     .name               = const_cast<char*>("proxy"),
     .cfg_name_key       =  {'d','i','s','p','l','a','y','-','p','r','o','x','y', 0},
-    .display_name       = NULL,
+    .display_name       = nullptr,
     ._init              = ProxyInit,
     ._destroy           = ProxyDestroy,
     ._get_num_entries   = ProxyGetNumEntries,
     ._result            = ProxyResult,
     ._token_match       = ProxyTokenMatch,
     ._get_display_value = ProxyGetDisplayValue,
-    ._get_icon          = NULL,
-    ._get_completion    = NULL,
-    ._preprocess_input  = NULL,
-    ._get_message       = NULL,
-    .private_data       = NULL,
-    .free               = NULL,
-    .ed                 = NULL,
+    ._get_icon          = nullptr,
+    ._get_completion    = nullptr,
+    ._preprocess_input  = nullptr,
+    ._get_message       = nullptr,
+    .private_data       = nullptr,
+    .free               = nullptr,
+    .ed                 = nullptr,
+    .module             = nullptr,
 };
