@@ -12,6 +12,7 @@ class Proxy : public ProcessHandler {
         Running,
         ErrorProcess,
         DestroyProcess,
+        ChildFinished,
     };
 public:
     Proxy();

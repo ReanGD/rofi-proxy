@@ -108,42 +108,11 @@ Process::~Process() {
 }
 
 void Process::Start(const char *command) {
-    if (command != nullptr) {
-        char **argv = nullptr;
-        GError *error = nullptr;
-
-        Defer _([&](...) mutable {
-            if (argv != nullptr) {
-                g_strfreev(argv);
-            }
-            if (error != nullptr) {
-                g_error_free(error);
-            }
-        });
-
-        if (g_shell_parse_argv(command, nullptr, &argv, &error) == FALSE) {
-            throw ProxyError("unable to parse arg '-proxy-cmd': %s", error->message);
-        }
-        Spawn(argv);
-        m_logger->Debug("Start child process %s", command);
-    } else {
-        m_logger->Debug("Use stdin and stdout instead child process");
-    }
-
     try {
-        SetNonBlockFlag(m_readFd);
-        m_readCh = g_io_channel_unix_new(m_readFd);
-        m_writeCh = g_io_channel_unix_new(m_writeFd);
-        m_readChWatcher = g_io_add_watch(m_readCh, G_IO_IN, onProcessInput, m_handler);
+        StartImpl(command);
     } catch(const std::exception& e) {
-        if (m_pid >= 0) {
-            kill(m_pid, SIGTERM);
-        }
-        throw;
-    }
-
-    if (m_pid >= 0) {
-        g_child_watch_add(m_pid, onProcessExit, m_handler);
+        m_logger->Error("Unable to start child process \"%s\"", command);
+        throw ProxyError("Unable to start child process \"%s\"", command);
     }
 }
 
@@ -182,10 +151,51 @@ void Process::Write(const char* text) {
 }
 
 void Process::Kill() {
+    m_logger->Debug("Send SIGTERM to child process %" G_PID_FORMAT, m_pid);
     if (m_pid >= 0) {
         kill(m_pid, SIGTERM);
     } else if (m_handler != nullptr) {
         m_handler->OnProcessExit(0, true);
+    }
+}
+
+void Process::StartImpl(const char* command) {
+    if (command != nullptr) {
+        char **argv = nullptr;
+        GError *error = nullptr;
+
+        Defer _([&](...) mutable {
+            if (argv != nullptr) {
+                g_strfreev(argv);
+            }
+            if (error != nullptr) {
+                g_error_free(error);
+            }
+        });
+
+        if (g_shell_parse_argv(command, nullptr, &argv, &error) == FALSE) {
+            throw ProxyError("unable to parse arg '-proxy-cmd': %s", error->message);
+        }
+        Spawn(argv);
+        m_logger->Debug("Start child process \"%s\"", command);
+    } else {
+        m_logger->Debug("Use stdin and stdout instead child process");
+    }
+
+    try {
+        SetNonBlockFlag(m_readFd);
+        m_readCh = g_io_channel_unix_new(m_readFd);
+        m_writeCh = g_io_channel_unix_new(m_writeFd);
+        m_readChWatcher = g_io_add_watch(m_readCh, G_IO_IN, onProcessInput, m_handler);
+    } catch(const std::exception& e) {
+        if (m_pid >= 0) {
+            kill(m_pid, SIGTERM);
+        }
+        throw;
+    }
+
+    if (m_pid >= 0) {
+        g_child_watch_add(m_pid, onProcessExit, m_handler);
     }
 }
 

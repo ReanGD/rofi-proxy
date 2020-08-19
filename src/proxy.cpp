@@ -25,12 +25,7 @@ void Proxy::Init() {
 
     char* command = nullptr;
     if (find_arg_str("-proxy-cmd", &command) == TRUE) {
-        try {
-            m_process->Start(command);
-        } catch(const std::exception& e) {
-            m_logger->Error("Unable to start child process %s", command);
-            throw ProxyError("Unable to start child process %s", command);
-        }
+        m_process->Start(command);
     } else {
         m_process->Start(nullptr);
     }
@@ -43,6 +38,10 @@ void Proxy::Destroy() {
     m_state = State::DestroyProcess;
     if (m_process) {
         m_process->Kill();
+        while (m_state != State::ChildFinished) {
+            g_main_context_iteration(nullptr, TRUE);
+        }
+        m_process.reset();
     }
     m_logger->Debug("Destroy plugin finished");
     m_logger.reset();
@@ -99,7 +98,7 @@ void Proxy::OnProcessExit(int pid, bool normally) {
 
     if (m_state == State::DestroyProcess) {
         m_logger->Debug("Child process %" G_PID_FORMAT " exited %s", pid, normally ? "normally" : "abnormally");
-        m_process.reset();
+        m_state = State::ChildFinished;
     }
 }
 

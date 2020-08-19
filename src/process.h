@@ -29,6 +29,7 @@ public:
     void Kill();
 
 private:
+    void StartImpl(const char* command);
     void Spawn(char **argv);
     void SetNonBlockFlag(int fd);
 
