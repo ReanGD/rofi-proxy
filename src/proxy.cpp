@@ -62,7 +62,7 @@ const char* Proxy::GetLine(size_t index) const {
     return m_lines[index].c_str();
 }
 
-bool Proxy::TokenMatch(rofi_int_matcher **tokens, size_t index) const {
+bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
     m_logger->Debug("TokenMatch(%zu)", index);
     if (index >= m_lines.size()) {
         return false;

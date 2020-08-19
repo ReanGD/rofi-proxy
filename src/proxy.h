@@ -2,11 +2,11 @@
 
 #include <string>
 #include <vector>
-#include <rofi/rofi-types.h>
 
 #include "process.h"
 
 
+struct rofi_int_matcher_t;
 class Proxy : public ProcessHandler {
     enum class State {
         Running,
@@ -23,7 +23,7 @@ public:
 
     size_t GetLinesCount() const;
     const char* GetLine(size_t index) const;
-    bool TokenMatch(rofi_int_matcher** tokens, size_t index) const;
+    bool TokenMatch(rofi_int_matcher_t** tokens, size_t index) const;
 
 public:
     void OnReadLine(const char* text) override;

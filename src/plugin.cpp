@@ -14,6 +14,11 @@ static const Proxy* GetProxy(const Mode *sw) {
     return reinterpret_cast<const Proxy *>(mode_get_private_data(sw));
 }
 
+static void logException(const char* func, const std::exception& e) {
+    fprintf(stderr, "%s: finished with error: %s\n", func, e.what());
+    fflush(stderr);
+}
+
 static int ProxyInit(Mode *sw) {
     if (mode_get_private_data(sw) == nullptr) {
         Proxy* proxy = nullptr;
@@ -25,7 +30,7 @@ static int ProxyInit(Mode *sw) {
             if (proxy != nullptr) {
                 delete proxy;
             }
-            fprintf(stderr, "ProxyInit: finished with error: %s\n", e.what());
+            logException("ProxyInit", e);
             return FALSE;
         }
     }
@@ -37,9 +42,10 @@ static void ProxyDestroy(Mode *sw) {
     auto* proxy = GetProxy(sw);
     if (proxy != nullptr) {
         try {
+            proxy->Destroy();
             delete proxy;
         } catch(const std::exception& e) {
-            fprintf(stderr, "ProxyDestroy: finished with error: %s\n", e.what());
+            logException("ProxyDestroy", e);
         }
         mode_set_private_data(sw, nullptr);
     }
@@ -49,7 +55,7 @@ static unsigned int ProxyGetNumEntries(const Mode *sw) {
     try {
         return static_cast<unsigned int>(GetProxy(sw)->GetLinesCount());
     } catch(const std::exception& e) {
-        fprintf(stderr, "ProxyGetNumEntries: finished with error: %s\n", e.what());
+        logException("ProxyGetNumEntries", e);
         return 0;
     }
 }
@@ -76,7 +82,7 @@ static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned i
     try {
         return GetProxy(sw)->TokenMatch(tokens, static_cast<size_t>(index)) ? TRUE : FALSE;
     } catch(const std::exception& e) {
-        fprintf(stderr, "ProxyTokenMatch: finished with error: %s\n", e.what());
+        logException("ProxyTokenMatch", e);
         return FALSE;
     }
 }
@@ -89,7 +95,7 @@ static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, int
     try {
         return g_strdup(GetProxy(sw)->GetLine(static_cast<size_t>(selectedLine)));
     } catch(const std::exception& e) {
-        fprintf(stderr, "ProxyGetDisplayValue: finished with error: %s\n", e.what());
+        logException("ProxyGetDisplayValue", e);
         return nullptr;
     }
 }
