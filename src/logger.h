@@ -6,11 +6,12 @@
 
 class Logger {
 public:
-    Logger() = delete;
-    Logger(bool enableFileLogging);
+    Logger();
     ~Logger();
 
 public:
+    void EnableFileLogging();
+
     template<typename ... Args> void Debug(const char* format, Args&&... args) {
         WriteWithFormat(false, format, std::forward<Args>(args)...);
     }

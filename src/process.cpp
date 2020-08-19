@@ -125,9 +125,9 @@ void Process::Start(const char *command) {
             throw ProxyError("unable to parse arg '-proxy-cmd': %s", error->message);
         }
         Spawn(argv);
-        m_logger->Debug("start child process %s", command);
+        m_logger->Debug("Start child process %s", command);
     } else {
-        m_logger->Debug("use stdin and stdout instead child process");
+        m_logger->Debug("Use stdin and stdout instead child process");
     }
 
     try {

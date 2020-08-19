@@ -7,26 +7,7 @@
 #include "exception.h"
 
 
-Logger::Logger(bool enableFileLogging) {
-    if (enableFileLogging) {
-        std::filesystem::path XDGDataHome;
-        if(const char* envValue = std::getenv("XDG_DATA_HOME"); envValue != nullptr) {
-            XDGDataHome = envValue;
-        } else if(const char* envValue = std::getenv("HOME"); envValue != nullptr) {
-            XDGDataHome = envValue;
-            XDGDataHome /= ".local";
-            XDGDataHome /= "share";
-        } else {
-            throw ProxyError("not found env varaibles: XDG_DATA_HOME or HOME");
-        }
-
-        auto logPath = XDGDataHome / "rofi" / "proxy.log";
-        m_logFd = open(logPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
-        if (m_logFd < 0) {
-            throw ProxyError("can't open file '%s' for write log", logPath.c_str());
-        }
-	}
-
+Logger::Logger() {
     GetBuffer(1023);
 }
 
@@ -42,6 +23,25 @@ Logger::~Logger() {
     }
 
     m_bufSize = 0;
+}
+
+void Logger::EnableFileLogging() {
+    std::filesystem::path XDGDataHome;
+    if(const char* envValue = std::getenv("XDG_DATA_HOME"); envValue != nullptr) {
+        XDGDataHome = envValue;
+    } else if(const char* envValue = std::getenv("HOME"); envValue != nullptr) {
+        XDGDataHome = envValue;
+        XDGDataHome /= ".local";
+        XDGDataHome /= "share";
+    } else {
+        throw ProxyError("not found env varaibles: XDG_DATA_HOME or HOME");
+    }
+
+    auto logPath = XDGDataHome / "rofi" / "proxy.log";
+    m_logFd = open(logPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+    if (m_logFd < 0) {
+        throw ProxyError("can't open file '%s' for write log", logPath.c_str());
+    }
 }
 
 char* Logger::GetBuffer(size_t size) {

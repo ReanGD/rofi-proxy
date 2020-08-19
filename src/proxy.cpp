@@ -1,53 +1,61 @@
 #include "proxy.h"
 
-#include <cstdlib>
-#include <filesystem>
 #include <rofi/helper.h>
 
+#include "logger.h"
+#include "exception.h"
 
-namespace {
 
-static std::filesystem::path FindLogPath() {
-    std::filesystem::path XDGDataHome;
-    if(const char* envValue = std::getenv("XDG_DATA_HOME"); envValue != nullptr) {
-        XDGDataHome = envValue;
-    } else if(const char* envValue = std::getenv("HOME"); envValue != nullptr) {
-        XDGDataHome = envValue;
-        XDGDataHome /= ".local";
-        XDGDataHome /= "share";
-    } else {
-        throw std::runtime_error("not found env varaibles: XDG_DATA_HOME or HOME");
-    }
-
-    return XDGDataHome / "rofi" / "proxy.log";
-}
-
-}
-
-Proxy::Proxy() {
+Proxy::Proxy()
+    : m_logger(std::make_shared<Logger>()) {
 
 }
 
 void Proxy::Init() {
-    m_log = fopen(FindLogPath().c_str(), "w");
-    if (m_log == nullptr) {
-        throw std::runtime_error("could not open log file");
+    char* logCmd = nullptr;
+    if (find_arg_str("-proxy-log", &logCmd) == TRUE) {
+        m_logger->EnableFileLogging();
     }
+    m_logger->Debug("Init plugin start");
+
     m_lines.push_back("aaa1");
     m_lines.push_back("aaa2");
     m_lines.push_back("aaa3");
+    m_process = std::make_shared<Process>(this, m_logger);
 
-    fputs("Init\n", m_log);
+    char* command = nullptr;
+    if (find_arg_str("-proxy-cmd", &command) == TRUE) {
+        try {
+            m_process->Start(command);
+        } catch(const std::exception& e) {
+            m_logger->Error("Unable to start child process %s", command);
+            throw ProxyError("Unable to start child process %s", command);
+        }
+    } else {
+        m_process->Start(nullptr);
+    }
+
+    m_logger->Debug("Init plugin finished");
+}
+
+void Proxy::Destroy() {
+    m_logger->Debug("Destroy plugin start");
+    m_state = State::DestroyProcess;
+    if (m_process) {
+        m_process->Kill();
+    }
+    m_logger->Debug("Destroy plugin finished");
+    m_logger.reset();
 }
 
 size_t Proxy::GetLinesCount() const {
-    fputs("GetLinesCount\n", m_log);
-    return m_lines.size();
+    size_t result = m_lines.size();
+    m_logger->Debug("GetLinesCount = %zu", result);
+    return result;
 }
 
 const char* Proxy::GetLine(size_t index) const {
-    std::string logMsg = "GetLine " + std::to_string(index) + "\n";
-    fputs(logMsg.c_str(), m_log);
+    m_logger->Debug("GetLine(%zu)", index);
     if (index >= m_lines.size()) {
         return nullptr;
     }
@@ -56,8 +64,7 @@ const char* Proxy::GetLine(size_t index) const {
 }
 
 bool Proxy::TokenMatch(rofi_int_matcher **tokens, size_t index) const {
-    std::string logMsg = "TokenMatch " + std::to_string(index) + "\n";
-    fputs(logMsg.c_str(), m_log);
+    m_logger->Debug("TokenMatch(%zu)", index);
     if (index >= m_lines.size()) {
         return false;
     }
@@ -65,10 +72,38 @@ bool Proxy::TokenMatch(rofi_int_matcher **tokens, size_t index) const {
     return helper_token_match(tokens, m_lines[index].c_str()) == TRUE;
 }
 
-Proxy::~Proxy() {
-    if (m_log != nullptr) {
-        fputs("Destroy\n", m_log);
-        fclose(m_log);
-        m_log = nullptr;
+void Proxy::OnReadLine(const char* text) {
+    m_logger->Debug("OnReadLine(%s)", text);
+}
+
+void Proxy::OnReadLineError(const char* text) {
+    m_logger->Error("Error while reading from stdout child process: %s", text);
+    if (m_state == State::Running) {
+        m_state = State::ErrorProcess;
+        m_process->Kill();
     }
+}
+
+void Proxy::OnProcessExit(int pid, bool normally) {
+    if (m_state == State::Running) {
+        m_logger->Error("Child process %" G_PID_FORMAT " exited unexpectedly, %s", pid, normally ? "normally" : "abnormally");
+        Clear();
+        exit(1);
+    }
+
+    if (m_state == State::ErrorProcess) {
+        m_logger->Debug("Child process %" G_PID_FORMAT " exited %s", pid, normally ? "normally" : "abnormally");
+        Clear();
+        exit(1);
+    }
+
+    if (m_state == State::DestroyProcess) {
+        m_logger->Debug("Child process %" G_PID_FORMAT " exited %s", pid, normally ? "normally" : "abnormally");
+        m_process.reset();
+    }
+}
+
+void Proxy::Clear() {
+    m_process.reset();
+    m_logger.reset();
 }
