@@ -63,12 +63,18 @@ const char* Proxy::GetLine(size_t index) const {
 }
 
 bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
-    m_logger->Debug("TokenMatch(%zu)", index);
+    // m_logger->Debug("TokenMatch(%zu)", index);
     if (index >= m_lines.size()) {
         return false;
     }
 
     return helper_token_match(tokens, m_lines[index].c_str()) == TRUE;
+}
+
+const char* Proxy::PreprocessInput(const char *text) {
+    m_logger->Debug("PreprocessInput(%s)", text);
+
+    return text;
 }
 
 void Proxy::OnReadLine(const char* text) {

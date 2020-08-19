@@ -20,34 +20,23 @@ static void logException(const char* func, const std::exception& e) {
 }
 
 static int ProxyInit(Mode *sw) {
-    if (mode_get_private_data(sw) == nullptr) {
-        Proxy* proxy = nullptr;
-        try {
-            proxy = new Proxy();
-            proxy->Init();
-            mode_set_private_data(sw, reinterpret_cast<void *>(proxy));
-        } catch(const std::exception& e) {
-            if (proxy != nullptr) {
-                delete proxy;
-            }
-            logException("ProxyInit", e);
-            return FALSE;
-        }
+    try {
+        GetProxy(sw)->Init();
+        return TRUE;
+    } catch(const std::exception& e) {
+        logException("ProxyInit", e);
+        return FALSE;
     }
-
-    return TRUE;
 }
 
 static void ProxyDestroy(Mode *sw) {
-    auto* proxy = GetProxy(sw);
-    if (proxy != nullptr) {
-        try {
-            proxy->Destroy();
-            delete proxy;
-        } catch(const std::exception& e) {
-            logException("ProxyDestroy", e);
-        }
+    try {
+        auto* proxy = GetProxy(sw);
+        proxy->Destroy();
+        delete proxy;
         mode_set_private_data(sw, nullptr);
+    } catch(const std::exception& e) {
+        logException("ProxyDestroy", e);
     }
 }
 
@@ -100,6 +89,15 @@ static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, int
     }
 }
 
+static char* ProxyPreprocessInput(Mode *sw, const char *input) {
+    try {
+        return g_strdup(GetProxy(sw)->PreprocessInput(input));
+    } catch(const std::exception& e) {
+        logException("ProxyPreprocessInput", e);
+        return nullptr;
+    }
+}
+
 Mode mode = {
     .abi_version        = ABI_VERSION,
     .name               = const_cast<char*>("proxy"),
@@ -113,9 +111,9 @@ Mode mode = {
     ._get_display_value = ProxyGetDisplayValue,
     ._get_icon          = nullptr,
     ._get_completion    = nullptr,
-    ._preprocess_input  = nullptr,
+    ._preprocess_input  = ProxyPreprocessInput,
     ._get_message       = nullptr,
-    .private_data       = nullptr,
+    .private_data       = reinterpret_cast<void *>(new Proxy()),
     .free               = nullptr,
     .ed                 = nullptr,
     .module             = nullptr,
