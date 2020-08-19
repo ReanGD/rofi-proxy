@@ -7,38 +7,42 @@
 
 #include <fcntl.h>
 #include <unistd.h>
-#include <stdexcept>
 
-#include "proxy_base.h"
+#include "defer.h"
+#include "logger.h"
+#include "exception.h"
 
 
 namespace {
 
 static void onProcessExit(GPid pid, gint status, gpointer context) {
-    fprintf(stderr, "Child %" G_PID_FORMAT " exited %s\n", pid, g_spawn_check_exit_status(status, nullptr) ? "normally" : "abnormally");
     if (context != nullptr) {
-        auto* process = reinterpret_cast<Process*>(context);
-        process->Destroy();
+        auto* handler = reinterpret_cast<ProcessHandler*>(context);
+        handler->OnProcessExit(pid, (g_spawn_check_exit_status(status, nullptr) == TRUE));
     }
-    g_spawn_close_pid(pid);
-    exit(0);
 }
 
 static int onProcessInput(GIOChannel *source, GIOCondition /* condition */, gpointer context) {
     static GString* buffer = g_string_sized_new(1024);
 
-    gunichar unichar;
     GError* error = nullptr;
+    Defer _([&](...) mutable {
+        if (error != nullptr) {
+            g_error_free(error);
+        }
+    });
+
+    gunichar unichar;
     GIOStatus status = g_io_channel_read_unichar(source, &unichar, &error);
 
-    //when there is nothing to read, status is G_IO_STATUS_AGAIN
     while (status == G_IO_STATUS_NORMAL) {
         g_string_append_unichar(buffer, unichar);
         if (unichar == '\n') {
             if (buffer->len > 1) { //input is not an empty line
                 if (context != nullptr) {
-                    auto* process = reinterpret_cast<Process*>(context);
-                    process->OnNewLine(buffer->str);
+                    auto* handler = reinterpret_cast<ProcessHandler*>(context);
+                    buffer->str[buffer->len - 1] = '\0';
+                    handler->OnReadLine(buffer->str);
                 }
             }
             g_string_set_size(buffer, 0);
@@ -46,9 +50,14 @@ static int onProcessInput(GIOChannel *source, GIOCondition /* condition */, gpoi
         status = g_io_channel_read_unichar(source, &unichar, &error);
     }
 
-    if (status == G_IO_STATUS_ERROR) {
-        fprintf(stderr, "Child process stdout error: %s\n", error->message);
-        g_error_free(error);
+    // G_IO_STATUS_AGAIN == nothing to read
+    if ((status != G_IO_STATUS_AGAIN) && (context != nullptr)) {
+        auto* handler = reinterpret_cast<ProcessHandler*>(context);
+        if (error != nullptr) {
+            handler->OnReadLineError(error->message);
+        } else {
+            handler->OnReadLineError("unknown error");
+        }
     }
 
     return G_SOURCE_CONTINUE;
@@ -56,33 +65,14 @@ static int onProcessInput(GIOChannel *source, GIOCondition /* condition */, gpoi
 
 }
 
-Process::Process(ProxyBase* parent)
+Process::Process(ProcessHandler* handler, const std::shared_ptr<Logger>& logger)
     : m_readFd(STDIN_FILENO)
     , m_writeFd(STDOUT_FILENO)
-    , m_parent(parent) {
+    , m_handler(handler)
+    , m_logger(logger) {
 }
 
 Process::~Process() {
-    if(m_pid != 0){
-        kill(m_pid, SIGTERM);
-    }
-    Destroy();
-}
-
-void Process::Create(char **argv) {
-    if (argv != nullptr) {
-        Spawn(argv);
-    }
-
-    SetNonBlockFlag(m_readFd);
-    m_readCh = g_io_channel_unix_new(m_readFd);
-    m_writeCh = g_io_channel_unix_new(m_writeFd);
-    m_readChWatcher = g_io_add_watch(m_readCh, G_IO_IN, onProcessInput, this);
-}
-
-void Process::Destroy() {
-    m_pid = 0;
-
     if (m_readChWatcher != 0) {
         g_source_remove(m_readChWatcher);
         m_readChWatcher = 0;
@@ -107,35 +97,121 @@ void Process::Destroy() {
         close(m_writeFd);
         m_writeFd = STDOUT_FILENO;
     }
+
+    if (m_pid >= 0) {
+        g_spawn_close_pid(m_pid);
+        m_pid = -1;
+    }
+
+    m_handler = nullptr;
+    m_logger.reset();
 }
 
-void Process::OnNewLine(const char* text) {
-    if (m_parent != nullptr) {
-        m_parent->OnNewLine(text);
+void Process::Start(const char *command) {
+    if (command != nullptr) {
+        char **argv = nullptr;
+        GError *error = nullptr;
+
+        Defer _([&](...) mutable {
+            if (argv != nullptr) {
+                g_strfreev(argv);
+            }
+            if (error != nullptr) {
+                g_error_free(error);
+            }
+        });
+
+        if (g_shell_parse_argv(command, nullptr, &argv, &error) == FALSE) {
+            throw ProxyError("unable to parse arg '-proxy-cmd': %s", error->message);
+        }
+        Spawn(argv);
+        m_logger->Debug("start child process %s", command);
+    } else {
+        m_logger->Debug("use stdin and stdout instead child process");
+    }
+
+    try {
+        SetNonBlockFlag(m_readFd);
+        m_readCh = g_io_channel_unix_new(m_readFd);
+        m_writeCh = g_io_channel_unix_new(m_writeFd);
+        m_readChWatcher = g_io_add_watch(m_readCh, G_IO_IN, onProcessInput, m_handler);
+    } catch(const std::exception& e) {
+        if (m_pid >= 0) {
+            kill(m_pid, SIGTERM);
+        }
+        throw;
+    }
+
+    if (m_pid >= 0) {
+        g_child_watch_add(m_pid, onProcessExit, m_handler);
+    }
+}
+
+void Process::Write(const char* text) {
+    GError *error = nullptr;
+    Defer _([&](...) mutable {
+        if (error != nullptr) {
+            g_error_free(error);
+        }
+    });
+
+    gsize bytesWitten;
+    if (g_io_channel_write_chars(m_writeCh, text, -1, &bytesWitten, &error) != G_IO_STATUS_NORMAL) {
+        if (error != nullptr) {
+            throw ProxyError(error->message);
+        } else {
+            throw ProxyError("unknown error");
+        }
+    }
+
+    if (g_io_channel_write_unichar(m_writeCh, '\n', &error) != G_IO_STATUS_NORMAL) {
+        if (error != nullptr) {
+            throw ProxyError(error->message);
+        } else {
+            throw ProxyError("unknown error");
+        }
+    }
+
+    if (g_io_channel_flush(m_writeCh, &error) != G_IO_STATUS_NORMAL) {
+        if (error != nullptr) {
+            throw ProxyError(error->message);
+        } else {
+            throw ProxyError("unknown error");
+        }
+    }
+}
+
+void Process::Kill() {
+    if (m_pid >= 0) {
+        kill(m_pid, SIGTERM);
+    } else if (m_handler != nullptr) {
+        m_handler->OnProcessExit(0, true);
     }
 }
 
 void Process::Spawn(char **argv) {
     char **envp = nullptr;
-    GError *error = nullptr;
     void* userData = nullptr;
     int* errorFDPtr = nullptr;
     const char* workingDirectory = nullptr;
     GSpawnChildSetupFunc childSetup = nullptr;
     GSpawnFlags flags = static_cast<GSpawnFlags>(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH);
 
+    GError *error = nullptr;
+    Defer _([&](...) mutable {
+        if (error != nullptr) {
+            g_error_free(error);
+        }
+    });
+
     if (g_spawn_async_with_pipes(workingDirectory, argv, envp, flags, childSetup, userData,
                                 &m_pid, &m_writeFd, &m_readFd, errorFDPtr, &error) == FALSE) {
-        auto msg = std::string(error->message);
-        g_error_free(error);
-        throw std::runtime_error(msg);
+        throw ProxyError(error->message);
     }
-
-    g_child_watch_add(m_pid, onProcessExit, this);
 }
 
 void Process::SetNonBlockFlag(int fd) {
     if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) != 0) {
-        throw std::runtime_error("can't set non block to output pipe");
+        throw ProxyError("can't set non block to output pipe");
     }
 }

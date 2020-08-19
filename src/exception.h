@@ -8,7 +8,7 @@
 namespace detail {
 
 template<typename ... Args>
-std::string format(const char* format, Args&&... args) {
+std::string Format(const char* format, Args&&... args) {
     int cnt = snprintf(nullptr, 0, format, std::forward<Args>(args)...);
     if (cnt <= 0) {
         throw std::runtime_error("error during exception formatting");
@@ -29,5 +29,5 @@ public:
         : std::runtime_error(text) {}
 
     template<typename... Args> ProxyError(const char* format, Args&&... args)
-        : std::runtime_error(detail::format(format, std::forward<Args>(args)...)) {}
+        : std::runtime_error(detail::Format(format, std::forward<Args>(args)...)) {}
 };

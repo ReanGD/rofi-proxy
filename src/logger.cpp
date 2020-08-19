@@ -27,7 +27,7 @@ Logger::Logger(bool enableFileLogging) {
         }
 	}
 
-    getBuffer(1023);
+    GetBuffer(1023);
 }
 
 Logger::~Logger() {
@@ -44,7 +44,7 @@ Logger::~Logger() {
     m_bufSize = 0;
 }
 
-char* Logger::getBuffer(size_t size) {
+char* Logger::GetBuffer(size_t size) {
     if (size <= m_bufSize) {
         return m_buf;
     }
@@ -59,7 +59,7 @@ char* Logger::getBuffer(size_t size) {
     return m_buf;
 }
 
-void Logger::write(bool isError, const void* buffer, size_t count) {
+void Logger::Write(bool isError, const void* buffer, size_t count) {
     if (m_logFd >= 0) {
         ssize_t writteCount = ::write(m_logFd, buffer, count);
         if (writteCount != static_cast<ssize_t>(count)) {
@@ -75,6 +75,6 @@ void Logger::write(bool isError, const void* buffer, size_t count) {
     }
 }
 
-void Logger::raise(const char* text) {
+void Logger::Raise(const char* text) {
     throw ProxyError(text);
 }
