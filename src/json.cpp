@@ -27,17 +27,20 @@
 
 
 JsonParser::JsonParser()
-    : m_tokens(new Token[m_tokensCount]) {
+    : m_tokens(new Token[64])
+    , m_tokensCapacity(64) {
 
 }
 
 JsonParser::~JsonParser() {
-    delete[] m_tokens;
+    if (m_tokens != nullptr) {
+        delete[] m_tokens;
+    }
 }
 
 int JsonParser::Parse(const char* js, size_t len) {
     pos = 0;
-    toknext = 0;
+    m_tokensCount = 0;
     toksuper = -1;
 
     return ParseImpl(js, len);
@@ -48,10 +51,15 @@ Token* JsonParser::Tokens() {
 }
 
 Token* JsonParser::NewToken(TokenType type, int start, int end) {
-    if (toknext >= m_tokensCount) {
-        return nullptr;
+    if (m_tokensCount >= m_tokensCapacity) {
+        m_tokensCapacity *= 2;
+        Token* tokens = new Token[m_tokensCapacity];
+        for (uint32_t i=0; i!=m_tokensCount; ++i) {
+            tokens[i] = m_tokens[i];
+        }
+        m_tokens = tokens;
     }
-    Token* token = &m_tokens[toknext++];
+    Token* token = &m_tokens[m_tokensCount++];
     token->type = type;
     token->start = start;
     token->end = end;
@@ -92,10 +100,6 @@ int JsonParser::ParsePrimitive(const char *js, const size_t len) {
 
 found:
     Token* token = NewToken(TokenType::Primitive, start, pos);
-    if (token == NULL) {
-        pos = start;
-        return JSMN_ERROR_NOMEM;
-    }
     pos--;
     return 0;
 }
@@ -112,10 +116,6 @@ int JsonParser::ParseString(const char *js, const size_t len) {
         /* Quote: end of string */
         if (c == '\"') {
             Token* token = NewToken(TokenType::String, start + 1, pos);
-            if (token == NULL) {
-                pos = start;
-                return JSMN_ERROR_NOMEM;
-            }
             return 0;
         }
 
@@ -164,7 +164,7 @@ int JsonParser::ParseString(const char *js, const size_t len) {
 int JsonParser::ParseImpl(const char *js, const size_t len) {
     int r;
     int i;
-    int count = toknext;
+    int count = m_tokensCount;
 
     for (; pos < len && js[pos] != '\0'; pos++) {
         char c;
@@ -177,9 +177,6 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
             count++;
             auto type = (c == '{' ? TokenType::Object : TokenType::Array);
             Token* token = NewToken(type, pos, -1);
-            if (token == NULL) {
-                return JSMN_ERROR_NOMEM;
-            }
             if (toksuper != -1) {
                 Token *t = &m_tokens[toksuper];
 #ifdef JSMN_STRICT
@@ -190,13 +187,13 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
 #endif
                 t->size++;
             }
-            toksuper = toknext - 1;
+            toksuper = m_tokensCount - 1;
             }
             break;
         case '}':
         case ']':
             type = (c == '}' ? TokenType::Object : TokenType::Array);
-            for (i = toknext - 1; i >= 0; i--) {
+            for (i = m_tokensCount - 1; i >= 0; i--) {
                 Token* token = &m_tokens[i];
                 if (token->start != -1 && token->end == -1) {
                     if (token->type != type) {
@@ -235,13 +232,13 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
         case ' ':
             break;
         case ':':
-            toksuper = toknext - 1;
+            toksuper = m_tokensCount - 1;
             break;
         case ',':
             if (toksuper != -1 &&
                     m_tokens[toksuper].type != TokenType::Array &&
                     m_tokens[toksuper].type != TokenType::Object) {
-                for (i = toknext - 1; i >= 0; i--) {
+                for (i = m_tokensCount - 1; i >= 0; i--) {
                     if (m_tokens[i].type == TokenType::Array || m_tokens[i].type == TokenType::Object) {
                         if (m_tokens[i].start != -1 && m_tokens[i].end == -1) {
                             toksuper = i;
@@ -297,7 +294,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
         }
     }
 
-    for (i = toknext - 1; i >= 0; i--) {
+    for (i = m_tokensCount - 1; i >= 0; i--) {
         /* Unmatched opened object or array */
         if (m_tokens[i].start != -1 && m_tokens[i].end == -1) {
             return JSMN_ERROR_PART;

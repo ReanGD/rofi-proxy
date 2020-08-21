@@ -13,8 +13,6 @@ enum class TokenType : uint8_t {
 };
 
 enum jsmnerr {
-    /* Not enough tokens were provided */
-    JSMN_ERROR_NOMEM = -1,
     /* Invalid character inside JSON string */
     JSMN_ERROR_INVAL = -2,
     /* The string is not a full JSON packet, more bytes expected */
@@ -43,10 +41,10 @@ public:
 
 public:
     unsigned int pos;     /* offset in the JSON string */
-    unsigned int toknext; /* next token to allocate */
     int toksuper;         /* superior token node, e.g. parent object or array */
 
 private:
-    size_t m_tokensCount = 64;
-    Token* m_tokens;
+    Token* m_tokens = nullptr;
+    uint32_t m_tokensCount = 0;
+    uint32_t m_tokensCapacity = 0;
 };
