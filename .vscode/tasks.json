@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run main",
+            "type": "shell",
+            "command": "./build/rofi_proxy",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher":
+            {
+                "base": "$gcc",
+				"fileLocation": [ "absolute" ],
+				"pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"message": 4
+				}
+			},
+        }
+    ]
+}

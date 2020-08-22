@@ -14,9 +14,9 @@ enum class TokenType : uint8_t {
 
 struct Token {
     TokenType type;
-    int start;
-    int end;
-    int size;
+    uint32_t start;
+    uint32_t end;
+    uint32_t size;
 };
 
 class JsonParser {
@@ -28,14 +28,14 @@ public:
     Token* Next();
 
 protected:
-    Token* NewToken(TokenType type, int start, int end);
+    Token* NewToken(TokenType type, uint32_t start, uint32_t end);
     void ParsePrimitive(const char *js, const size_t len);
     void ParseString(const char *js, const size_t len);
     void ParseImpl(const char *js, const size_t len);
 
 private:
-    unsigned int pos;     /* offset in the JSON string */
-    int toksuper;         /* superior token node, e.g. parent object or array */
+    uint32_t m_pos;  // offset in the JSON string
+    uint32_t m_toksuper;  // superior token node, e.g. parent object or array
 
     Token* m_tokens = nullptr;
     uint32_t m_tokensIt = 0;

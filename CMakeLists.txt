@@ -53,6 +53,8 @@ target_compile_options(${PROJECT_NAME}
     -Wsign-conversion
     -Wctor-dtor-privacy
     -Woverloaded-virtual
+
+    -Wno-format-security
 )
 
 set_target_properties(${PROJECT_NAME}
