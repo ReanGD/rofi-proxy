@@ -26,6 +26,9 @@
 #include "exception.h"
 
 
+static const char STRING_INVALID[]  = "invalid character inside JSON string";
+static const char JSON_INVALID[]  = "the string is not a full JSON packet, more bytes expected";
+
 JsonParser::JsonParser()
     : m_tokens(new Token[64])
     , m_tokensCapacity(64) {
@@ -38,16 +41,22 @@ JsonParser::~JsonParser() {
     }
 }
 
-int JsonParser::Parse(const char* js, size_t len) {
+void JsonParser::Parse(const char* js, size_t len) {
     pos = 0;
-    m_tokensCount = 0;
     toksuper = -1;
 
-    return ParseImpl(js, len);
+    m_tokensIt = 0;
+    m_tokensCount = 0;
+
+    ParseImpl(js, len);
 }
 
-Token* JsonParser::Tokens() {
-    return m_tokens;
+Token* JsonParser::Next() {
+    if (m_tokensIt < m_tokensCount) {
+        return &m_tokens[m_tokensIt++];
+    }
+
+    return nullptr;
 }
 
 Token* JsonParser::NewToken(TokenType type, int start, int end) {
@@ -57,6 +66,7 @@ Token* JsonParser::NewToken(TokenType type, int start, int end) {
         for (uint32_t i=0; i!=m_tokensCount; ++i) {
             tokens[i] = m_tokens[i];
         }
+        delete[] m_tokens;
         m_tokens = tokens;
     }
     Token* token = &m_tokens[m_tokensCount++];
@@ -68,7 +78,7 @@ Token* JsonParser::NewToken(TokenType type, int start, int end) {
     return token;
 }
 
-int JsonParser::ParsePrimitive(const char *js, const size_t len) {
+void JsonParser::ParsePrimitive(const char *js, const size_t len) {
     int start = pos;
     for (; pos < len && js[pos] != '\0'; pos++) {
         switch (js[pos]) {
@@ -88,23 +98,20 @@ int JsonParser::ParsePrimitive(const char *js, const size_t len) {
             break;
         }
         if (js[pos] < 32 || js[pos] >= 127) {
-            pos = start;
-            return JSMN_ERROR_INVAL;
+            throw ProxyError(STRING_INVALID);
         }
     }
 #ifdef JSMN_STRICT
     /* In strict mode primitive must be followed by a comma/object/array */
-    pos = start;
-    return JSMN_ERROR_PART;
+    throw ProxyError(JSON_INVALID);
 #endif
 
 found:
     Token* token = NewToken(TokenType::Primitive, start, pos);
     pos--;
-    return 0;
 }
 
-int JsonParser::ParseString(const char *js, const size_t len) {
+void JsonParser::ParseString(const char *js, const size_t len) {
     int start = pos;
 
     pos++;
@@ -115,8 +122,8 @@ int JsonParser::ParseString(const char *js, const size_t len) {
 
         /* Quote: end of string */
         if (c == '\"') {
-            Token* token = NewToken(TokenType::String, start + 1, pos);
-            return 0;
+            NewToken(TokenType::String, start + 1, pos);
+            return;
         }
 
         /* Backslash: Quoted symbol expected */
@@ -143,8 +150,7 @@ int JsonParser::ParseString(const char *js, const size_t len) {
                     if (!((js[pos] >= 48 && js[pos] <= 57) ||   /* 0-9 */
                                 (js[pos] >= 65 && js[pos] <= 70) ||   /* A-F */
                                 (js[pos] >= 97 && js[pos] <= 102))) { /* a-f */
-                        pos = start;
-                        return JSMN_ERROR_INVAL;
+                        throw ProxyError(STRING_INVALID);
                     }
                     pos++;
                 }
@@ -152,19 +158,16 @@ int JsonParser::ParseString(const char *js, const size_t len) {
                 break;
             /* Unexpected symbol */
             default:
-                pos = start;
-                return JSMN_ERROR_INVAL;
+                throw ProxyError(STRING_INVALID);
             }
         }
     }
-    pos = start;
-    return JSMN_ERROR_PART;
+    throw ProxyError(JSON_INVALID);
 }
 
-int JsonParser::ParseImpl(const char *js, const size_t len) {
+void JsonParser::ParseImpl(const char *js, const size_t len) {
     int r;
     int i;
-    int count = m_tokensCount;
 
     for (; pos < len && js[pos] != '\0'; pos++) {
         char c;
@@ -174,7 +177,6 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
         switch (c) {
         case '{':
         case '[': {
-            count++;
             auto type = (c == '{' ? TokenType::Object : TokenType::Array);
             Token* token = NewToken(type, pos, -1);
             if (toksuper != -1) {
@@ -182,7 +184,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
 #ifdef JSMN_STRICT
                 /* In strict mode an object or array can't become a key */
                 if (t->type == TokenType::Object) {
-                    return JSMN_ERROR_INVAL;
+                    throw ProxyError(STRING_INVALID);
                 }
 #endif
                 t->size++;
@@ -197,7 +199,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
                 Token* token = &m_tokens[i];
                 if (token->start != -1 && token->end == -1) {
                     if (token->type != type) {
-                        return JSMN_ERROR_INVAL;
+                        throw ProxyError(STRING_INVALID);
                     }
                     toksuper = -1;
                     token->end = pos + 1;
@@ -206,7 +208,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
             }
             /* Error if unmatched closing bracket */
             if (i == -1) {
-                return JSMN_ERROR_INVAL;
+                throw ProxyError(STRING_INVALID);
             }
             for (; i >= 0; i--) {
                 Token* token = &m_tokens[i];
@@ -217,11 +219,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
             }
             break;
         case '\"':
-            r = ParseString(js, len);
-            if (r < 0) {
-                return r;
-            }
-            count++;
+            ParseString(js, len);
             if (toksuper != -1) {
                 m_tokens[toksuper].size++;
             }
@@ -269,18 +267,14 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
                 const Token *t = &m_tokens[toksuper];
                 if (t->type == TokenType::Object ||
                         (t->type == TokenType::String && t->size != 0)) {
-                    return JSMN_ERROR_INVAL;
+                    throw ProxyError(STRING_INVALID);
                 }
             }
 #else
         /* In non-strict mode every unquoted value is a primitive */
         default:
 #endif
-            r = ParsePrimitive(js, len);
-            if (r < 0) {
-                return r;
-            }
-            count++;
+            ParsePrimitive(js, len);
             if (toksuper != -1) {
                 m_tokens[toksuper].size++;
             }
@@ -289,7 +283,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
 #ifdef JSMN_STRICT
         /* Unexpected char in strict mode */
         default:
-            return JSMN_ERROR_INVAL;
+            throw ProxyError(STRING_INVALID);
 #endif
         }
     }
@@ -297,9 +291,7 @@ int JsonParser::ParseImpl(const char *js, const size_t len) {
     for (i = m_tokensCount - 1; i >= 0; i--) {
         /* Unmatched opened object or array */
         if (m_tokens[i].start != -1 && m_tokens[i].end == -1) {
-            return JSMN_ERROR_PART;
+            throw ProxyError(JSON_INVALID);
         }
     }
-
-    return count;
 }
