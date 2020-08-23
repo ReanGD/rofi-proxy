@@ -15,23 +15,24 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURm_POSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * FITNESS FOR A PARTICULAR PURm_textPosE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
 
+#include <cstring>
+
 #include "json.h"
 #include "exception.h"
 
 
-static const uint32_t UNDEFINED = UINT32_MAX;
 static const char STRING_INVALID[]  = "invalid character inside JSON string";
 static const char JSON_INVALID[]  = "the string is not a full JSON packet, more bytes expected";
 
-std::string_view Token::AsString(const char* text) {
-    return std::string_view(text + start, text + end);
+std::string_view Token::AsString() {
+    return std::string_view(start, end);
 }
 
 JsonParser::JsonParser()
@@ -44,15 +45,25 @@ JsonParser::~JsonParser() {
     if (m_tokens != nullptr) {
         delete[] m_tokens;
     }
+    if (m_text != nullptr) {
+        delete[] m_text;
+    }
 }
 
-void JsonParser::Parse(const char* js, size_t len) {
-    m_pos = 0;
-    m_toksuper = UNDEFINED;
+void JsonParser::Parse(const char* text) {
+    if (m_text != nullptr) {
+        delete[] m_text;
+    }
+    auto len = strlen(text) + 1;
+    m_text = new char[len];
+    strncpy(m_text, text, len);
+    m_textIt = m_text;
+
+    m_parent = nullptr;
     m_tokensIt = 0;
     m_tokensCount = 0;
 
-    ParseImpl(js, len);
+    ParseImpl();
 }
 
 Token* JsonParser::Next(TokenType expectedType) {
@@ -72,7 +83,7 @@ Token* JsonParser::Next(TokenType expectedType) {
     return nullptr;
 }
 
-Token* JsonParser::NewToken(TokenType type, uint32_t start, uint32_t end) {
+Token* JsonParser::NewToken(TokenType type, char* start, char* end) {
     if (m_tokensCount >= m_tokensCapacity) {
         m_tokensCapacity *= 2;
         Token* tokens = new Token[m_tokensCapacity];
@@ -91,12 +102,11 @@ Token* JsonParser::NewToken(TokenType type, uint32_t start, uint32_t end) {
     return token;
 }
 
-void JsonParser::ParsePrimitive(const char *js, const size_t len) {
-    auto start = m_pos;
-    for (; (m_pos < len) && (js[m_pos] != '\0'); ++m_pos) {
-        switch (js[m_pos]) {
+void JsonParser::ParsePrimitive() {
+    for (char* start = m_textIt; *m_textIt != '\0'; ++m_textIt) {
+        switch (*m_textIt) {
 #ifndef JSMN_STRICT
-        /* In strict mode primitive must be followed by "," or "}" or "]" */
+        // In strict mode primitive must be followed by "," or "}" or "]"
         case ':':
 #endif
         case '\t':
@@ -106,13 +116,13 @@ void JsonParser::ParsePrimitive(const char *js, const size_t len) {
         case ',':
         case ']':
         case '}':
-            NewToken(TokenType::Primitive, start, m_pos);
-            m_pos--;
+            NewToken(TokenType::Primitive, start, m_textIt);
+            --m_textIt;
             return;
         default:
             break;
         }
-        if (js[m_pos] < 32 || js[m_pos] >= 127) {
+        if ((*m_textIt < 32) || (*m_textIt >= 127)) {
             throw ProxyError(STRING_INVALID);
         }
     }
@@ -122,25 +132,19 @@ void JsonParser::ParsePrimitive(const char *js, const size_t len) {
 #endif
 }
 
-void JsonParser::ParseString(const char *js, const size_t len) {
-    auto start = m_pos;
-    m_pos++;
-
-    /* Skip starting quote */
-    for (; (m_pos < len) && (js[m_pos] != '\0'); ++m_pos) {
-        char c = js[m_pos];
-
-        /* Quote: end of string */
-        if (c == '\"') {
-            NewToken(TokenType::String, start + 1, m_pos);
+void JsonParser::ParseString() {
+    for (char* start = ++m_textIt; *m_textIt != '\0'; ++m_textIt) {
+        // Quote: end of string
+        if (*m_textIt == '\"') {
+            NewToken(TokenType::String, start, m_textIt);
             return;
         }
 
         /* Backslash: Quoted symbol expected */
-        if (c == '\\' && m_pos + 1 < len) {
+        if ((*m_textIt == '\\') && (m_textIt[1] != '\0')) {
             int i;
-            m_pos++;
-            switch (js[m_pos]) {
+            ++m_textIt;
+            switch (*m_textIt) {
             /* Allowed escaped symbols */
             case '\"':
             case '/':
@@ -151,21 +155,20 @@ void JsonParser::ParseString(const char *js, const size_t len) {
             case 'n':
             case 't':
                 break;
-            /* Allows escaped symbol \uXXXX */
+            // Allows escaped symbol \uXXXX
             case 'u':
-                m_pos++;
-                for (i=0; (i < 4) && (m_pos < len) && (js[m_pos] != '\0'); ++i) {
-                    /* If it isn't a hex character we have an error */
-                    if (!(  (js[m_pos] >= 48 && js[m_pos] <= 57) ||   /* 0-9 */
-                            (js[m_pos] >= 65 && js[m_pos] <= 70) ||   /* A-F */
-                            (js[m_pos] >= 97 && js[m_pos] <= 102))) { /* a-f */
+                ++m_textIt;
+                for (i=0; (i != 4) && (*m_textIt != '\0'); ++i, ++m_textIt) {
+                    // If it isn't a hex character we have an error
+                    if (!(  (*m_textIt >= 48 && *m_textIt <= 57) ||   // 0-9
+                            (*m_textIt >= 65 && *m_textIt <= 70) ||   // A-F
+                            (*m_textIt >= 97 && *m_textIt <= 102))) { // a-f
                         throw ProxyError(STRING_INVALID);
                     }
-                    m_pos++;
                 }
-                m_pos--;
+                --m_textIt;
                 break;
-            /* Unexpected symbol */
+            // Unexpected symbol
             default:
                 throw ProxyError(STRING_INVALID);
             }
@@ -175,39 +178,38 @@ void JsonParser::ParseString(const char *js, const size_t len) {
     throw ProxyError(JSON_INVALID);
 }
 
-void JsonParser::ParseImpl(const char *js, const size_t len) {
-    for (; (m_pos < len) && (js[m_pos] != '\0'); ++m_pos) {
+void JsonParser::ParseImpl() {
+    for (; *m_textIt != '\0'; ++m_textIt) {
         int32_t i;
         TokenType type;
-        char c = js[m_pos];
+        char c = *m_textIt;
         switch (c) {
         case '{':
         case '[':
             type = (c == '{' ? TokenType::Object : TokenType::Array);
-            NewToken(type, m_pos, UNDEFINED);
-            if (m_toksuper != UNDEFINED) {
-                Token *t = &m_tokens[m_toksuper];
+            NewToken(type, m_textIt, nullptr);
+            if (m_parent != nullptr) {
 #ifdef JSMN_STRICT
-                /* In strict mode an object or array can't become a key */
-                if (t->type == TokenType::Object) {
+                // In strict mode an object or array can't become a key
+                if (m_parent->type == TokenType::Object) {
                     throw ProxyError(STRING_INVALID);
                 }
 #endif
-                t->size++;
+                m_parent->size++;
             }
-            m_toksuper = m_tokensCount - 1;
+            m_parent = &m_tokens[m_tokensCount - 1];
             break;
         case '}':
         case ']':
             type = (c == '}' ? TokenType::Object : TokenType::Array);
             for (i=static_cast<int32_t>(m_tokensCount - 1); i >= 0; --i) {
                 Token* token = &m_tokens[i];
-                if (token->end == UNDEFINED) {
+                if (token->end == nullptr) {
                     if (token->type != type) {
                         throw ProxyError(STRING_INVALID);
                     }
-                    m_toksuper = UNDEFINED;
-                    token->end = m_pos + 1;
+                    m_parent = nullptr;
+                    token->end = m_textIt + 1;
                     break;
                 }
             }
@@ -217,16 +219,16 @@ void JsonParser::ParseImpl(const char *js, const size_t len) {
             }
             for (; i >= 0; --i) {
                 Token* token = &m_tokens[i];
-                if (token->end == UNDEFINED) {
-                    m_toksuper = static_cast<uint32_t>(i);
+                if (token->end == nullptr) {
+                    m_parent = &m_tokens[i];
                     break;
                 }
             }
             break;
         case '\"':
-            ParseString(js, len);
-            if (m_toksuper != UNDEFINED) {
-                m_tokens[m_toksuper].size++;
+            ParseString();
+            if (m_parent != nullptr) {
+                m_parent->size++;
             }
             break;
         case '\t':
@@ -235,14 +237,15 @@ void JsonParser::ParseImpl(const char *js, const size_t len) {
         case ' ':
             break;
         case ':':
-            m_toksuper = m_tokensCount - 1;
+            m_parent = &m_tokens[m_tokensCount - 1];
             break;
         case ',':
-            if ((m_toksuper != UNDEFINED) && (m_tokens[m_toksuper].type != TokenType::Array) && (m_tokens[m_toksuper].type != TokenType::Object)) {
+            if ((m_parent != nullptr) && (m_parent->type != TokenType::Array) && (m_parent->type != TokenType::Object)) {
                 for (i=static_cast<int32_t>(m_tokensCount - 1); i >= 0; --i) {
-                    if ((m_tokens[i].type == TokenType::Array) || (m_tokens[i].type == TokenType::Object)) {
-                        if (m_tokens[i].end == UNDEFINED) {
-                            m_toksuper = static_cast<uint32_t>(i);
+                    Token* t = &m_tokens[i];
+                    if ((t->type == TokenType::Array) || (t->type == TokenType::Object)) {
+                        if (t->end == nullptr) {
+                            m_parent = t;
                             break;
                         }
                     }
@@ -250,7 +253,7 @@ void JsonParser::ParseImpl(const char *js, const size_t len) {
             }
             break;
 #ifdef JSMN_STRICT
-        /* In strict mode primitives are: numbers and booleans */
+        // In strict mode primitives are: numbers and booleans
         case '-':
         case '0':
         case '1':
@@ -265,20 +268,19 @@ void JsonParser::ParseImpl(const char *js, const size_t len) {
         case 't':
         case 'f':
         case 'n':
-            /* And they must not be keys of the object */
-            if (m_toksuper != UNDEFINED) {
-                const Token *t = &m_tokens[m_toksuper];
-                if ((t->type == TokenType::Object) || ((t->type == TokenType::String) && (t->size != 0))) {
+            // And they must not be keys of the object
+            if (m_parent != nullptr) {
+                if ((m_parent->type == TokenType::Object) || ((m_parent->type == TokenType::String) && (m_parent->size != 0))) {
                     throw ProxyError(STRING_INVALID);
                 }
             }
 #else
-        /* In non-strict mode every unquoted value is a primitive */
+        // In non-strict mode every unquoted value is a primitive
         default:
 #endif
-            ParsePrimitive(js, len);
-            if (m_toksuper != UNDEFINED) {
-                m_tokens[m_toksuper].size++;
+            ParsePrimitive();
+            if (m_parent != nullptr) {
+                m_parent->size++;
             }
             break;
 
@@ -292,7 +294,7 @@ void JsonParser::ParseImpl(const char *js, const size_t len) {
 
     for (uint32_t i=0; i!=m_tokensCount; ++i) {
         // Unmatched opened object or array
-        if (m_tokens[i].end == UNDEFINED) {
+        if (m_tokens[i].end == nullptr) {
             throw ProxyError(JSON_INVALID);
         }
     }

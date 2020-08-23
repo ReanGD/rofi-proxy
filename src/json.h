@@ -15,11 +15,11 @@ enum class TokenType : uint8_t {
 
 struct Token {
     TokenType type;
-    uint32_t start;
-    uint32_t end;
+    char* start;
+    char* end;
     uint32_t size;
 
-    std::string_view AsString(const char* text);
+    std::string_view AsString();
 };
 
 class JsonParser {
@@ -27,20 +27,21 @@ public:
     JsonParser();
     ~JsonParser();
 
-    void Parse(const char* js, size_t len);
+    void Parse(const char* text);
     [[maybe_unused]] Token* Next(TokenType expectedType = TokenType::Undefined);
 
 protected:
-    Token* NewToken(TokenType type, uint32_t start, uint32_t end);
-    void ParsePrimitive(const char *js, const size_t len);
-    void ParseString(const char *js, const size_t len);
-    void ParseImpl(const char *js, const size_t len);
+    Token* NewToken(TokenType type, char* start, char* end);
+    void ParsePrimitive();
+    void ParseString();
+    void ParseImpl();
 
 private:
-    uint32_t m_pos;  // offset in the JSON string
-    uint32_t m_toksuper;  // superior token node, e.g. parent object or array
+    char* m_text = nullptr;
+    char* m_textIt = nullptr;
 
     Token* m_tokens = nullptr;
+    Token* m_parent = nullptr;
     uint32_t m_tokensIt = 0;
     uint32_t m_tokensCount = 0;
     uint32_t m_tokensCapacity = 0;

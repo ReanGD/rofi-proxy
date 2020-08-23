@@ -15,7 +15,7 @@ public:
     std::vector<std::string> ParseRequest(const char* text);
 
 private:
-    std::vector<std::string> ParseLines(const char* text);
+    std::vector<std::string> ParseLines();
 
 private:
     JsonParser m_parser;
