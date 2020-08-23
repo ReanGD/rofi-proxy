@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 
 enum class TokenType : uint8_t {
@@ -17,6 +18,8 @@ struct Token {
     uint32_t start;
     uint32_t end;
     uint32_t size;
+
+    std::string_view AsString(const char* text);
 };
 
 class JsonParser {
@@ -25,7 +28,7 @@ public:
     ~JsonParser();
 
     void Parse(const char* js, size_t len);
-    Token* Next();
+    [[maybe_unused]] Token* Next(TokenType expectedType = TokenType::Undefined);
 
 protected:
     Token* NewToken(TokenType type, uint32_t start, uint32_t end);

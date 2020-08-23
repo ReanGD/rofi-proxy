@@ -30,6 +30,10 @@ static const uint32_t UNDEFINED = UINT32_MAX;
 static const char STRING_INVALID[]  = "invalid character inside JSON string";
 static const char JSON_INVALID[]  = "the string is not a full JSON packet, more bytes expected";
 
+std::string_view Token::AsString(const char* text) {
+    return std::string_view(text + start, text + end);
+}
+
 JsonParser::JsonParser()
     : m_tokens(new Token[64])
     , m_tokensCapacity(64) {
@@ -51,9 +55,18 @@ void JsonParser::Parse(const char* js, size_t len) {
     ParseImpl(js, len);
 }
 
-Token* JsonParser::Next() {
+Token* JsonParser::Next(TokenType expectedType) {
     if (m_tokensIt < m_tokensCount) {
-        return &m_tokens[m_tokensIt++];
+        Token* token = &m_tokens[m_tokensIt++];
+        if ((expectedType != TokenType::Undefined) && (token->type != expectedType)) {
+            throw ProxyError("unexpected token type");
+        }
+
+        return token;
+    }
+
+    if (expectedType != TokenType::Undefined) {
+        throw ProxyError("unexpected token type");
     }
 
     return nullptr;
