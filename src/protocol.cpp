@@ -7,29 +7,41 @@ std::string Protocol::CreateInputChangeRequest(const char* input) {
     return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", input);
 }
 
-std::vector<std::string> Protocol::ParseRequest(const char* text) {
+std::vector<Line> Protocol::ParseRequest(const char* text) {
     m_parser.Parse(text);
     m_parser.Next(TokenType::Object);
-    if (m_parser.Next(TokenType::String)->AsString() != "lines") {
+    if (m_parser.NextString() != "lines") {
         throw ProxyError("unexpected token value");
     }
-    m_parser.Next(TokenType::Array);
 
-    return ParseLines();
+    return ParseLines(m_parser.Next(TokenType::Array)->size);
 }
 
-std::vector<std::string> Protocol::ParseLines() {
-    std::vector<std::string> result;
-    for(auto* t = m_parser.Next(); t!=nullptr; t = m_parser.Next()) {
-        if (t->type != TokenType::Object) {
-            throw ProxyError("unexpected token type");
-        }
+std::vector<Line> Protocol::ParseLines(uint32_t itemCount) {
+    std::vector<Line> result;
+    for (uint32_t i=0; i!=itemCount; ++i) {
+        result.push_back(ParseLine(m_parser.Next(TokenType::Object)->size));
+    }
 
-        if (m_parser.Next(TokenType::String)->AsString() != "text") {
-            throw ProxyError("unexpected token value");
-        }
+    return result;
+}
 
-        result.push_back(std::string(m_parser.Next(TokenType::String)->AsString()));
+Line Protocol::ParseLine(uint32_t keyCount) {
+    Line result;
+
+    for (uint32_t i=0; i!=keyCount; ++i) {
+        auto key = m_parser.NextString();
+        if (key == "text") {
+            result.text = m_parser.NextString();
+        } else if (key == "filtering") {
+            result.filtering = m_parser.NextBool();
+        } else {
+            throw ProxyError("unexpected key in line item");
+        }
+    }
+
+    if (result.text.empty()) {
+        throw ProxyError("line.text is empty");
     }
 
     return result;

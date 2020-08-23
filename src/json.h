@@ -28,7 +28,10 @@ public:
     ~JsonParser();
 
     void Parse(const char* text);
-    [[maybe_unused]] Token* Next(TokenType expectedType = TokenType::Undefined);
+    [[maybe_unused]] Token* Next();
+    [[maybe_unused]] Token* Next(TokenType expectedType);
+    std::string_view NextString();
+    bool NextBool();
 
 protected:
     Token* NewToken(TokenType type, char* start, char* end);

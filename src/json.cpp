@@ -66,21 +66,39 @@ void JsonParser::Parse(const char* text) {
     ParseImpl();
 }
 
-Token* JsonParser::Next(TokenType expectedType) {
+Token* JsonParser::Next() {
     if (m_tokensIt < m_tokensCount) {
-        Token* token = &m_tokens[m_tokensIt++];
-        if ((expectedType != TokenType::Undefined) && (token->type != expectedType)) {
-            throw ProxyError("unexpected token type");
-        }
-
-        return token;
-    }
-
-    if (expectedType != TokenType::Undefined) {
-        throw ProxyError("unexpected token type");
+        return &m_tokens[m_tokensIt++];
     }
 
     return nullptr;
+}
+
+Token* JsonParser::Next(TokenType expectedType) {
+    Token* token = Next();
+
+    if ((token == nullptr) || (token->type != expectedType)) {
+        throw ProxyError("unexpected token type");
+    }
+
+    return token;
+}
+
+std::string_view JsonParser::NextString() {
+    return Next(TokenType::String)->AsString();
+}
+
+bool JsonParser::NextBool() {
+    auto text = Next(TokenType::Primitive)->AsString();
+    if (text == "true") {
+        return true;
+    }
+
+    if (text == "false") {
+        return false;
+    }
+
+    throw ProxyError("unexpected bool token value");
 }
 
 Token* JsonParser::NewToken(TokenType type, char* start, char* end) {
@@ -127,7 +145,7 @@ void JsonParser::ParsePrimitive() {
         }
     }
 #ifdef JSMN_STRICT
-    /* In strict mode primitive must be followed by a comma/object/array */
+    // In strict mode primitive must be followed by a comma/object/array
     throw ProxyError(JSON_INVALID);
 #endif
 }
@@ -189,12 +207,6 @@ void JsonParser::ParseImpl() {
             type = (c == '{' ? TokenType::Object : TokenType::Array);
             NewToken(type, m_textIt, nullptr);
             if (m_parent != nullptr) {
-#ifdef JSMN_STRICT
-                // In strict mode an object or array can't become a key
-                if (m_parent->type == TokenType::Object) {
-                    throw ProxyError(STRING_INVALID);
-                }
-#endif
                 m_parent->size++;
             }
             m_parent = &m_tokens[m_tokensCount - 1];
