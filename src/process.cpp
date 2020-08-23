@@ -70,6 +70,7 @@ Process::Process(ProcessHandler* handler, const std::shared_ptr<Logger>& logger)
     , m_writeFd(STDOUT_FILENO)
     , m_handler(handler)
     , m_logger(logger) {
+
 }
 
 Process::~Process() {

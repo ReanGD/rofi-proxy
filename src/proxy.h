@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "process.h"
+#include "protocol.h"
 
 
 struct rofi_int_matcher_t;
@@ -16,6 +17,7 @@ class Proxy : public ProcessHandler {
     };
 public:
     Proxy();
+    ~Proxy();
 
 public:
     void Init();
@@ -36,7 +38,9 @@ private:
 
 private:
     State m_state = State::Running;
-    std::vector<std::string> m_lines;
+    std::string m_input;
+    std::vector<Line> m_lines;
     std::shared_ptr<Logger> m_logger;
-    std::shared_ptr<Process> m_process;
+    std::unique_ptr<Process> m_process;
+    std::unique_ptr<Protocol> m_protocol;
 };

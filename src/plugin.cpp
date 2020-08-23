@@ -57,10 +57,10 @@ static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsig
     } else if(mretv & MENU_PREVIOUS) {
         retv = PREVIOUS_DIALOG;
     } else if (mretv & MENU_QUICK_SWITCH) {
-        retv = static_cast<ModeMode>( mretv & MENU_LOWER_MASK);
+        retv = static_cast<ModeMode>(mretv & MENU_LOWER_MASK);
     } else if ((mretv & MENU_OK)) {
         retv = RELOAD_DIALOG;
-    } else if ((mretv & MENU_ENTRY_DELETE ) == MENU_ENTRY_DELETE) {
+    } else if ((mretv & MENU_ENTRY_DELETE) == MENU_ENTRY_DELETE) {
         retv = RELOAD_DIALOG;
     }
 

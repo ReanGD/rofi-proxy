@@ -6,8 +6,18 @@
 #include "exception.h"
 
 
+extern "C" {
+extern void rofi_view_reload(void);
+}
+
 Proxy::Proxy()
-    : m_logger(std::make_shared<Logger>()) {
+    : m_logger(std::make_shared<Logger>())
+    , m_process(std::make_unique<Process>(this, m_logger))
+    , m_protocol(std::make_unique<Protocol>()) {
+
+}
+
+Proxy::~Proxy() {
 
 }
 
@@ -17,11 +27,6 @@ void Proxy::Init() {
         m_logger->EnableFileLogging();
     }
     m_logger->Debug("Init plugin start");
-
-    m_lines.push_back("aaa1");
-    m_lines.push_back("aaa2");
-    m_lines.push_back("aaa3");
-    m_process = std::make_shared<Process>(this, m_logger);
 
     char* command = nullptr;
     if (find_arg_str("-proxy-cmd", &command) == TRUE) {
@@ -43,6 +48,7 @@ void Proxy::Destroy() {
         }
         m_process.reset();
     }
+    m_protocol.reset();
     m_logger->Debug("Destroy plugin finished");
     m_logger.reset();
 }
@@ -59,26 +65,54 @@ const char* Proxy::GetLine(size_t index) const {
         return nullptr;
     }
 
-    return m_lines[index].c_str();
+    return m_lines[index].text.c_str();
 }
 
 bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
-    // m_logger->Debug("TokenMatch(%zu)", index);
+    m_logger->Debug("TokenMatch(%zu)", index);
     if (index >= m_lines.size()) {
         return false;
     }
 
-    return helper_token_match(tokens, m_lines[index].c_str()) == TRUE;
+    if (!m_lines[index].filtering) {
+        return true;
+    }
+
+    return (helper_token_match(tokens, m_lines[index].text.c_str()) == TRUE);
 }
 
 const char* Proxy::PreprocessInput(const char *text) {
+    if (m_input == text) {
+        return text;
+    }
+
     m_logger->Debug("PreprocessInput(%s)", text);
+
+    try {
+        m_input = text;
+        std::string request = m_protocol->CreateInputChangeRequest(text);
+        m_process->Write(request.c_str());
+        m_logger->Debug("Send input change request to child process: %s", request.c_str());
+    } catch(const std::exception& e) {
+        m_logger->Error("Error while send request to child process: %s", e.what());
+        m_state = State::ErrorProcess;
+        m_process->Kill();
+    }
 
     return text;
 }
 
 void Proxy::OnReadLine(const char* text) {
-    m_logger->Debug("OnReadLine(%s)", text);
+    m_logger->Debug("Get request from child process: %s", text);
+
+    try {
+        m_lines = m_protocol->ParseRequest(text);
+        rofi_view_reload();
+    } catch(const std::exception& e) {
+        m_logger->Error("Error while parse child process request: %s", e.what());
+        m_state = State::ErrorProcess;
+        m_process->Kill();
+    }
 }
 
 void Proxy::OnReadLineError(const char* text) {
@@ -109,6 +143,7 @@ void Proxy::OnProcessExit(int pid, bool normally) {
 }
 
 void Proxy::Clear() {
+    m_protocol.reset();
     m_process.reset();
     m_logger.reset();
 }
