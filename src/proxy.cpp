@@ -82,11 +82,10 @@ bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
 }
 
 const char* Proxy::PreprocessInput(const char *text) {
+    m_logger->Debug("PreprocessInput(%s)", text);
     if (m_input == text) {
         return text;
     }
-
-    m_logger->Debug("PreprocessInput(%s)", text);
 
     try {
         m_input = text;
