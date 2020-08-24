@@ -37,6 +37,8 @@ Line Protocol::ParseLine(uint32_t keyCount) {
         auto key = m_json.NextString();
         if (key == "text") {
             result.text = m_json.NextString();
+        } else if (key == "key") {
+            result.key = m_json.NextString();
         } else if (key == "filtering") {
             result.filtering = m_json.NextBool();
         } else {
@@ -46,6 +48,9 @@ Line Protocol::ParseLine(uint32_t keyCount) {
 
     if (result.text.empty()) {
         throw ProxyError("line.text is empty");
+    }
+    if (result.key.empty()) {
+        result.key = result.text;
     }
 
     return result;

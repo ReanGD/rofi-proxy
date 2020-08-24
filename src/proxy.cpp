@@ -120,7 +120,7 @@ void Proxy::OnSelectLine(size_t index) {
     }
 
     try {
-        std::string request = m_protocol->CreateOnSelectLineRequest(m_lines[index].text.c_str());
+        std::string request = m_protocol->CreateOnSelectLineRequest(m_lines[index].key.c_str());
         m_process->Write(request.c_str());
         m_logger->Debug("Send on select line request to child process: %s", request.c_str());
     } catch(const std::exception& e) {

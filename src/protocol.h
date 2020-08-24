@@ -8,6 +8,7 @@
 
 struct Line {
     bool filtering = true;
+    std::string key;
     std::string text;
 };
 
