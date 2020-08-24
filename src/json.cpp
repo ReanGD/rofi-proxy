@@ -22,7 +22,9 @@
  * SOFTWARE.
  */
 
+#include <locale>
 #include <cstring>
+#include <charconv>
 
 #include "json.h"
 #include "exception.h"
@@ -30,6 +32,28 @@
 
 static const char STRING_INVALID[]  = "invalid character inside JSON string";
 static const char JSON_INVALID[]  = "the string is not a full JSON packet, more bytes expected";
+
+namespace {
+
+static char* toUtf8(const char* data, char* writeIt) {
+    static auto locale = std::locale(std::locale(), "en_US.UTF-8", std::locale::ctype);
+    static auto& f = std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(locale);
+
+    uint16_t v;
+    if (auto [p, ec] = std::from_chars(data, data + 4, v, 16); ((ec != std::errc()) || (p != data + 4))) {
+        throw ProxyError(STRING_INVALID);
+    }
+
+    char* toNext;
+    std::mbstate_t mb{};
+    const char16_t* fromNext;
+    const char16_t* wcArr = reinterpret_cast<const char16_t*>(&v);
+    f.out(mb, wcArr, wcArr + 1, fromNext, writeIt, writeIt + 4, toNext);
+
+    return toNext;
+}
+
+}
 
 std::string_view Token::AsString() {
     return std::string_view(start, end);
@@ -151,45 +175,53 @@ void JsonParser::ParsePrimitive() {
 }
 
 void JsonParser::ParseString() {
-    for (char* start = ++m_textIt; *m_textIt != '\0'; ++m_textIt) {
-        // Quote: end of string
+    ++m_textIt;
+    char* startIt = m_textIt;
+    char* writeIt = m_textIt;
+
+    while (*m_textIt != '\0') {
         if (*m_textIt == '\"') {
-            NewToken(TokenType::String, start, m_textIt);
+            NewToken(TokenType::String, startIt, writeIt);
             return;
         }
 
-        /* Backslash: Quoted symbol expected */
         if ((*m_textIt == '\\') && (m_textIt[1] != '\0')) {
-            int i;
             ++m_textIt;
             switch (*m_textIt) {
-            /* Allowed escaped symbols */
             case '\"':
+                *writeIt++ = '\"';
+                break;
             case '/':
+                *writeIt++ = '/';
+                break;
             case '\\':
+                *writeIt++ = '\\';
+                break;
             case 'b':
+                *writeIt++ = '\b';
+                break;
             case 'f':
+                *writeIt++ = '\f';
+                break;
             case 'r':
+                *writeIt++ = '\r';
+                break;
             case 'n':
+                *writeIt++ = '\b';
+                break;
             case 't':
+                *writeIt++ = '\t';
                 break;
-            // Allows escaped symbol \uXXXX
+            // \uXXXX
             case 'u':
-                ++m_textIt;
-                for (i=0; (i != 4) && (*m_textIt != '\0'); ++i, ++m_textIt) {
-                    // If it isn't a hex character we have an error
-                    if (!(  (*m_textIt >= 48 && *m_textIt <= 57) ||   // 0-9
-                            (*m_textIt >= 65 && *m_textIt <= 70) ||   // A-F
-                            (*m_textIt >= 97 && *m_textIt <= 102))) { // a-f
-                        throw ProxyError(STRING_INVALID);
-                    }
-                }
-                --m_textIt;
+                writeIt = toUtf8(++m_textIt, writeIt);
+                m_textIt += 4;
                 break;
-            // Unexpected symbol
             default:
                 throw ProxyError(STRING_INVALID);
             }
+        } else {
+            *writeIt++ = *m_textIt++;
         }
     }
 
