@@ -24,9 +24,10 @@ public:
     void Destroy();
 
     size_t GetLinesCount() const;
-    const char* GetLine(size_t index) const;
+    const char* GetLine(size_t index);
     bool TokenMatch(rofi_int_matcher_t** tokens, size_t index) const;
     const char* PreprocessInput(const char *text);
+    void OnSelectLine(size_t index);
 
 public:
     void OnReadLine(const char* text) override;
@@ -34,6 +35,7 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
+    void OnSendRequestError(const char* err);
     void Clear();
 
 private:

@@ -90,8 +90,17 @@ static unsigned int ProxyGetNumEntries(const Mode *sw) {
     }
 }
 
-static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsigned int /* selectedLine */) {
+static ModeMode ProxyResult(Mode *sw, int mretv, char **/* input */, unsigned int selectedLine) {
     ModeMode retv = MODE_EXIT;
+
+    if (mretv & MENU_OK) {
+        try {
+            GetProxy(sw)->OnSelectLine(selectedLine);
+        } catch(const std::exception& e) {
+            logException("ProxyResult (", e);
+        }
+        return RELOAD_DIALOG;
+    }
 
     if (mretv & MENU_NEXT) {
         retv = NEXT_DIALOG;
@@ -99,8 +108,6 @@ static ModeMode ProxyResult(Mode */* sw */, int mretv, char **/* input */, unsig
         retv = PREVIOUS_DIALOG;
     } else if (mretv & MENU_QUICK_SWITCH) {
         retv = static_cast<ModeMode>(mretv & MENU_LOWER_MASK);
-    } else if ((mretv & MENU_OK)) {
-        retv = RELOAD_DIALOG;
     } else if ((mretv & MENU_ENTRY_DELETE) == MENU_ENTRY_DELETE) {
         retv = RELOAD_DIALOG;
     }
@@ -117,13 +124,13 @@ static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned i
     }
 }
 
-static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, int */* state */, GList **/* attrList */, int getEntry) {
+static char* ProxyGetDisplayValue(const Mode */* sw */, unsigned int selectedLine, int */* state */, GList **/* attrList */, int getEntry) {
     if (!getEntry) {
         return nullptr;
     }
 
     try {
-        return g_strdup(GetProxy(sw)->GetLine(static_cast<size_t>(selectedLine)));
+        return g_strdup(GetProxy(&mode)->GetLine(static_cast<size_t>(selectedLine)));
     } catch(const std::exception& e) {
         logException("ProxyGetDisplayValue", e);
         return nullptr;

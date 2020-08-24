@@ -16,7 +16,8 @@ public:
     Protocol() = default;
     ~Protocol() = default;
 
-    std::string CreateInputChangeRequest(const char* input);
+    std::string CreateInputChangeRequest(const char* text);
+    std::string CreateOnSelectLineRequest(const char* text);
     std::vector<Line> ParseRequest(const char* text);
 
 private:

@@ -7,7 +7,11 @@
 
 
 extern "C" {
+typedef struct RofiViewState RofiViewState;
+
 extern void rofi_view_reload(void);
+extern RofiViewState* rofi_view_get_active(void);
+extern const char* rofi_view_get_user_input(const RofiViewState *state);
 }
 
 Proxy::Proxy()
@@ -59,17 +63,27 @@ size_t Proxy::GetLinesCount() const {
     return result;
 }
 
-const char* Proxy::GetLine(size_t index) const {
+const char* Proxy::GetLine(size_t index) {
     m_logger->Debug("GetLine(%zu)", index);
     if (index >= m_lines.size()) {
         return nullptr;
+    }
+
+    if (index == 0) {
+        RofiViewState* state = rofi_view_get_active();
+        if (state != nullptr) {
+            const char* text = rofi_view_get_user_input(state);
+            if ((text != nullptr) && (*text == '\0')) {
+                PreprocessInput(text);
+            }
+        }
     }
 
     return m_lines[index].text.c_str();
 }
 
 bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
-    m_logger->Debug("TokenMatch(%zu)", index);
+    // m_logger->Debug("TokenMatch(%zu)", index);
     if (index >= m_lines.size()) {
         return false;
     }
@@ -82,7 +96,7 @@ bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
 }
 
 const char* Proxy::PreprocessInput(const char *text) {
-    m_logger->Debug("PreprocessInput(%s)", text);
+    m_logger->Debug("PreprocessInput(\"%s\")", text);
     if (m_input == text) {
         return text;
     }
@@ -93,12 +107,25 @@ const char* Proxy::PreprocessInput(const char *text) {
         m_process->Write(request.c_str());
         m_logger->Debug("Send input change request to child process: %s", request.c_str());
     } catch(const std::exception& e) {
-        m_logger->Error("Error while send request to child process: %s", e.what());
-        m_state = State::ErrorProcess;
-        m_process->Kill();
+        OnSendRequestError(e.what());
     }
 
     return text;
+}
+
+void Proxy::OnSelectLine(size_t index) {
+    m_logger->Debug("OnSelectLine(%zu)", index);
+    if (index >= m_lines.size()) {
+        return;
+    }
+
+    try {
+        std::string request = m_protocol->CreateOnSelectLineRequest(m_lines[index].text.c_str());
+        m_process->Write(request.c_str());
+        m_logger->Debug("Send on select line request to child process: %s", request.c_str());
+    } catch(const std::exception& e) {
+        OnSendRequestError(e.what());
+    }
 }
 
 void Proxy::OnReadLine(const char* text) {
@@ -124,8 +151,15 @@ void Proxy::OnReadLineError(const char* text) {
 
 void Proxy::OnProcessExit(int pid, bool normally) {
     if (m_state == State::Running) {
-        m_logger->Error("Child process %" G_PID_FORMAT " exited unexpectedly, %s", pid, normally ? "normally" : "abnormally");
+        if (normally) {
+            m_logger->Debug("Child process %" G_PID_FORMAT " exited unexpectedly, normally", pid);
+        } else {
+            m_logger->Error("Child process %" G_PID_FORMAT " exited unexpectedly, abnormally", pid);
+        }
         Clear();
+        if (normally) {
+            exit(0);
+        }
         exit(1);
     }
 
@@ -139,6 +173,12 @@ void Proxy::OnProcessExit(int pid, bool normally) {
         m_logger->Debug("Child process %" G_PID_FORMAT " exited %s", pid, normally ? "normally" : "abnormally");
         m_state = State::ChildFinished;
     }
+}
+
+void Proxy::OnSendRequestError(const char* err) {
+    m_logger->Error("Error while send request to child process: %s", err);
+    m_state = State::ErrorProcess;
+    m_process->Kill();
 }
 
 void Proxy::Clear() {

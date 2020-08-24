@@ -3,8 +3,12 @@
 #include "exception.h"
 
 
-std::string Protocol::CreateInputChangeRequest(const char* input) {
-    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_json.EscapeString(input).c_str());
+std::string Protocol::CreateInputChangeRequest(const char* text) {
+    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
+}
+
+std::string Protocol::CreateOnSelectLineRequest(const char* text) {
+    return detail::Format("{\"name\": \"selected_line\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
 }
 
 std::vector<Line> Protocol::ParseRequest(const char* text) {
