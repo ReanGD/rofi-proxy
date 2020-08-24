@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <string_view>
 
 
@@ -21,10 +20,10 @@ struct Token {
     std::string_view AsString();
 };
 
-class JsonParser {
+class Json {
 public:
-    JsonParser();
-    ~JsonParser();
+    Json();
+    ~Json();
 
     void Parse(const char* text);
     [[maybe_unused]] Token* Next();

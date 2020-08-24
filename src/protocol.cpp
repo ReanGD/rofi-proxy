@@ -4,23 +4,23 @@
 
 
 std::string Protocol::CreateInputChangeRequest(const char* input) {
-    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_parser.EscapeString(input).c_str());
+    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_json.EscapeString(input).c_str());
 }
 
 std::vector<Line> Protocol::ParseRequest(const char* text) {
-    m_parser.Parse(text);
-    m_parser.Next(TokenType::Object);
-    if (m_parser.NextString() != "lines") {
+    m_json.Parse(text);
+    m_json.Next(TokenType::Object);
+    if (m_json.NextString() != "lines") {
         throw ProxyError("unexpected token value");
     }
 
-    return ParseLines(m_parser.Next(TokenType::Array)->size);
+    return ParseLines(m_json.Next(TokenType::Array)->size);
 }
 
 std::vector<Line> Protocol::ParseLines(uint32_t itemCount) {
     std::vector<Line> result;
     for (uint32_t i=0; i!=itemCount; ++i) {
-        result.push_back(ParseLine(m_parser.Next(TokenType::Object)->size));
+        result.push_back(ParseLine(m_json.Next(TokenType::Object)->size));
     }
 
     return result;
@@ -30,11 +30,11 @@ Line Protocol::ParseLine(uint32_t keyCount) {
     Line result;
 
     for (uint32_t i=0; i!=keyCount; ++i) {
-        auto key = m_parser.NextString();
+        auto key = m_json.NextString();
         if (key == "text") {
-            result.text = m_parser.NextString();
+            result.text = m_json.NextString();
         } else if (key == "filtering") {
-            result.filtering = m_parser.NextBool();
+            result.filtering = m_json.NextBool();
         } else {
             throw ProxyError("unexpected key in line item");
         }

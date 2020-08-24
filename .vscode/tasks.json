@@ -2,26 +2,43 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run main",
+            "label": "Run simple calc",
             "type": "shell",
-            "command": "./build/rofi_proxy",
             "group": "build",
+            "command": "./example/simple_calc.sh",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
             },
-            "problemMatcher":
-            {
-                "base": "$gcc",
-				"fileLocation": [ "absolute" ],
-				"pattern": {
-                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(.*)$",
-					"file": 1,
-					"line": 2,
-					"column": 3,
-					"message": 4
-				}
-			},
+            "problemMatcher": [
+                "$gcc"
+            ],
+        },
+        {
+            "label": "Run advanced calc",
+            "type": "shell",
+            "group": "build",
+            "command": "./example/advanced_calc_with_combi.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Run unicode",
+            "type": "shell",
+            "group": "build",
+            "command": "./example/unicode.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

@@ -57,13 +57,13 @@ std::string_view Token::AsString() {
     return std::string_view(start, end);
 }
 
-JsonParser::JsonParser()
+Json::Json()
     : m_tokens(new Token[64])
     , m_tokensCapacity(64) {
 
 }
 
-JsonParser::~JsonParser() {
+Json::~Json() {
     if (m_tokens != nullptr) {
         delete[] m_tokens;
     }
@@ -72,7 +72,7 @@ JsonParser::~JsonParser() {
     }
 }
 
-void JsonParser::Parse(const char* text) {
+void Json::Parse(const char* text) {
     if (m_text != nullptr) {
         delete[] m_text;
     }
@@ -88,7 +88,7 @@ void JsonParser::Parse(const char* text) {
     ParseImpl();
 }
 
-Token* JsonParser::Next() {
+Token* Json::Next() {
     if (m_tokensIt < m_tokensCount) {
         return &m_tokens[m_tokensIt++];
     }
@@ -96,7 +96,7 @@ Token* JsonParser::Next() {
     return nullptr;
 }
 
-Token* JsonParser::Next(TokenType expectedType) {
+Token* Json::Next(TokenType expectedType) {
     Token* token = Next();
 
     if ((token == nullptr) || (token->type != expectedType)) {
@@ -106,11 +106,11 @@ Token* JsonParser::Next(TokenType expectedType) {
     return token;
 }
 
-std::string_view JsonParser::NextString() {
+std::string_view Json::NextString() {
     return Next(TokenType::String)->AsString();
 }
 
-bool JsonParser::NextBool() {
+bool Json::NextBool() {
     auto text = Next(TokenType::Primitive)->AsString();
     if (text == "true") {
         return true;
@@ -123,7 +123,7 @@ bool JsonParser::NextBool() {
     throw ProxyError("unexpected bool token value");
 }
 
-std::string JsonParser::EscapeString(const char* str) {
+std::string Json::EscapeString(const char* str) {
     static auto& facet = std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(userLocale);
     char16_t wc;
     char16_t* toNext;
@@ -179,7 +179,7 @@ std::string JsonParser::EscapeString(const char* str) {
     return result;
 }
 
-Token* JsonParser::NewToken(TokenType type, char* start, char* end) {
+Token* Json::NewToken(TokenType type, char* start, char* end) {
     if (m_tokensCount >= m_tokensCapacity) {
         m_tokensCapacity *= 2;
         Token* tokens = new Token[m_tokensCapacity];
@@ -198,7 +198,7 @@ Token* JsonParser::NewToken(TokenType type, char* start, char* end) {
     return token;
 }
 
-void JsonParser::ParsePrimitive() {
+void Json::ParsePrimitive() {
     for (char* start = m_textIt; *m_textIt != '\0'; ++m_textIt) {
         switch (*m_textIt) {
 #ifndef JSMN_STRICT
@@ -228,7 +228,7 @@ void JsonParser::ParsePrimitive() {
 #endif
 }
 
-void JsonParser::ParseString() {
+void Json::ParseString() {
     ++m_textIt;
     char* startIt = m_textIt;
     char* writeIt = m_textIt;
@@ -282,7 +282,7 @@ void JsonParser::ParseString() {
     throw ProxyError(JSON_INVALID);
 }
 
-void JsonParser::ParseImpl() {
+void Json::ParseImpl() {
     for (; *m_textIt != '\0'; ++m_textIt) {
         int32_t i;
         TokenType type;

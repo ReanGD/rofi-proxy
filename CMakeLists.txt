@@ -6,12 +6,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 find_package(PkgConfig)
-pkg_search_module(GLIB2 REQUIRED glib-2.0)
 pkg_search_module(CAIRO REQUIRED cairo)
-pkg_search_module(GTK3 REQUIRED gtk+-3.0)
-
+pkg_search_module(GLIB2 REQUIRED glib-2.0)
 pkg_get_variable(ROFI_PLUGINS_DIR rofi pluginsdir)
-
 
 
 file(GLOB_RECURSE SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/*.cpp")
@@ -24,14 +21,6 @@ target_include_directories(${PROJECT_NAME}
   PRIVATE
     ${GLIB2_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
-    ${GTK3_INCLUDE_DIRS}
-)
-
-target_link_libraries(${PROJECT_NAME}
-  PRIVATE
-    ${GLIB2_LIBRARIES}
-    ${CAIRO_LIBRARIES}
-    ${GTK3_LIBRARIES}
 )
 
 target_compile_options(${PROJECT_NAME}

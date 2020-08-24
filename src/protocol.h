@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "json.h"
 
@@ -24,5 +24,5 @@ private:
     Line ParseLine(uint32_t keyCount);
 
 private:
-    JsonParser m_parser;
+    Json m_json;
 };
