@@ -4,7 +4,7 @@
 
 
 std::string Protocol::CreateInputChangeRequest(const char* input) {
-    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", input);
+    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_parser.EscapeString(input).c_str());
 }
 
 std::vector<Line> Protocol::ParseRequest(const char* text) {

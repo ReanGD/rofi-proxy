@@ -29,16 +29,14 @@
 #include "json.h"
 #include "exception.h"
 
-
-static const char STRING_INVALID[]  = "invalid character inside JSON string";
+static const auto userLocale = std::locale("");
+static const char STRING_INVALID[] = "invalid character inside JSON string";
 static const char JSON_INVALID[]  = "the string is not a full JSON packet, more bytes expected";
 
 namespace {
 
 static char* toUtf8(const char* data, char* writeIt) {
-    static auto locale = std::locale(std::locale(), "en_US.UTF-8", std::locale::ctype);
-    static auto& f = std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(locale);
-
+    static auto& facet = std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(userLocale);
     uint16_t v;
     if (auto [p, ec] = std::from_chars(data, data + 4, v, 16); ((ec != std::errc()) || (p != data + 4))) {
         throw ProxyError(STRING_INVALID);
@@ -48,7 +46,7 @@ static char* toUtf8(const char* data, char* writeIt) {
     std::mbstate_t mb{};
     const char16_t* fromNext;
     const char16_t* wcArr = reinterpret_cast<const char16_t*>(&v);
-    f.out(mb, wcArr, wcArr + 1, fromNext, writeIt, writeIt + 4, toNext);
+    facet.out(mb, wcArr, wcArr + 1, fromNext, writeIt, writeIt + 4, toNext);
 
     return toNext;
 }
@@ -123,6 +121,62 @@ bool JsonParser::NextBool() {
     }
 
     throw ProxyError("unexpected bool token value");
+}
+
+std::string JsonParser::EscapeString(const char* str) {
+    static auto& facet = std::use_facet<std::codecvt<char16_t, char, std::mbstate_t>>(userLocale);
+    char16_t wc;
+    char16_t* toNext;
+    const char* fromNext;
+    std::mbstate_t mb{};
+
+    std::string result;
+    const char* it = str;
+    const char* endIt = str + strlen(str) + 1;
+    while(it != endIt) {
+        int charCount = facet.length(mb, it, endIt, 1);
+        if (charCount == 1) {
+            switch (*it) {
+            case '\"':
+            case '/':
+            case '\\':
+            case '\b':
+            case '\f':
+            case '\r':
+            case '\n':
+            case '\t':
+                result.push_back('\\');
+            }
+            result.push_back(*it);
+        } else {
+            facet.in(mb, it, it + charCount, fromNext, &wc, &wc + 1, toNext);
+            uint16_t v = static_cast<uint16_t>(wc);
+
+            char data[7] = {'\\', 'u', '0', '0', '0', '0', '\0'};
+            char *dataBegin = data + 2;
+            if (v == 0) {
+                dataBegin = nullptr;
+            } else if ((v >> 4) == 0) {
+                dataBegin += 3;
+            } else if ((v >> 8) == 0) {
+                dataBegin += 2;
+            } else if ((v >> 12) == 0) {
+                dataBegin += 1;
+            } else {
+                dataBegin += 0;
+            }
+
+            if (dataBegin != nullptr) {
+                if (auto [p, ec] = std::to_chars(dataBegin, data + 6, v, 16); ((ec != std::errc()) || (p != data + 6))) {
+                    throw ProxyError("invalid string for escape");
+                }
+            }
+            result.append(data);
+        }
+        it += charCount;
+    }
+
+    return result;
 }
 
 Token* JsonParser::NewToken(TokenType type, char* start, char* end) {

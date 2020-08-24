@@ -32,6 +32,8 @@ public:
     std::string_view NextString();
     bool NextBool();
 
+    std::string EscapeString(const char* str);
+
 protected:
     Token* NewToken(TokenType type, char* start, char* end);
     void ParsePrimitive();
