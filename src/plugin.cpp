@@ -117,20 +117,17 @@ static ModeMode ProxyResult(Mode *sw, int mretv, char **/* input */, unsigned in
 
 static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned int index) {
     try {
-        return GetProxy(sw)->TokenMatch(tokens, static_cast<size_t>(index)) ? TRUE : FALSE;
+        return GetProxy(sw)->TokenMatch(tokens, index) ? TRUE : FALSE;
     } catch(const std::exception& e) {
         logException("ProxyTokenMatch", e);
         return FALSE;
     }
 }
 
-static char* ProxyGetDisplayValue(const Mode */* sw */, unsigned int selectedLine, int */* state */, GList **/* attrList */, int getEntry) {
-    if (!getEntry) {
-        return nullptr;
-    }
-
+static char* ProxyGetDisplayValue(const Mode *, unsigned int selectedLine, int *state, GList **, int getEntry) {
     try {
-        return g_strdup(GetProxy(&mode)->GetLine(static_cast<size_t>(selectedLine)));
+        const char* text = GetProxy(&mode)->GetLine(selectedLine, state);
+        return getEntry ? g_strdup(text) : nullptr;
     } catch(const std::exception& e) {
         logException("ProxyGetDisplayValue", e);
         return nullptr;

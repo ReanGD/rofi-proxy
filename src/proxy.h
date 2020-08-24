@@ -24,7 +24,7 @@ public:
     void Destroy();
 
     size_t GetLinesCount() const;
-    const char* GetLine(size_t index);
+    const char* GetLine(size_t index, int* state);
     bool TokenMatch(rofi_int_matcher_t** tokens, size_t index) const;
     const char* PreprocessInput(const char *text);
     void OnSelectLine(size_t index);

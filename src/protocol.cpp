@@ -37,10 +37,12 @@ Line Protocol::ParseLine(uint32_t keyCount) {
         auto key = m_json.NextString();
         if (key == "text") {
             result.text = m_json.NextString();
-        } else if (key == "key") {
-            result.key = m_json.NextString();
+        } else if (key == "id") {
+            result.id = m_json.NextString();
         } else if (key == "filtering") {
             result.filtering = m_json.NextBool();
+        } else if (key == "markup") {
+            result.markup = m_json.NextBool();
         } else {
             throw ProxyError("unexpected key in line item");
         }
@@ -49,8 +51,8 @@ Line Protocol::ParseLine(uint32_t keyCount) {
     if (result.text.empty()) {
         throw ProxyError("line.text is empty");
     }
-    if (result.key.empty()) {
-        result.key = result.text;
+    if (result.id.empty()) {
+        result.id = result.text;
     }
 
     return result;

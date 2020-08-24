@@ -14,6 +14,12 @@ extern RofiViewState* rofi_view_get_active(void);
 extern const char* rofi_view_get_user_input(const RofiViewState *state);
 }
 
+static const int NORMAL = 0;
+static const int URGENT = 1;
+static const int ACTIVE = 2;
+static const int SELECTED = 4;
+static const int MARKUP = 8;
+
 Proxy::Proxy()
     : m_logger(std::make_shared<Logger>())
     , m_process(std::make_unique<Process>(this, m_logger))
@@ -63,22 +69,25 @@ size_t Proxy::GetLinesCount() const {
     return result;
 }
 
-const char* Proxy::GetLine(size_t index) {
+const char* Proxy::GetLine(size_t index, int* state) {
     m_logger->Debug("GetLine(%zu)", index);
     if (index >= m_lines.size()) {
         return nullptr;
     }
 
     if (index == 0) {
-        RofiViewState* state = rofi_view_get_active();
-        if (state != nullptr) {
-            const char* text = rofi_view_get_user_input(state);
+        RofiViewState* viewState = rofi_view_get_active();
+        if (viewState != nullptr) {
+            const char* text = rofi_view_get_user_input(viewState);
             if ((text != nullptr) && (*text == '\0')) {
                 PreprocessInput(text);
             }
         }
     }
 
+    if (m_lines[index].markup) {
+        *state |= MARKUP;
+    }
     return m_lines[index].text.c_str();
 }
 
@@ -120,7 +129,7 @@ void Proxy::OnSelectLine(size_t index) {
     }
 
     try {
-        std::string request = m_protocol->CreateOnSelectLineRequest(m_lines[index].key.c_str());
+        std::string request = m_protocol->CreateOnSelectLineRequest(m_lines[index].id.c_str());
         m_process->Write(request.c_str());
         m_logger->Debug("Send on select line request to child process: %s", request.c_str());
     } catch(const std::exception& e) {

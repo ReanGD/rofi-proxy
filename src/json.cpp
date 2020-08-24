@@ -241,7 +241,7 @@ void Json::ParseString() {
 
         if ((*m_textIt == '\\') && (m_textIt[1] != '\0')) {
             ++m_textIt;
-            switch (*m_textIt) {
+            switch (*m_textIt++) {
             case '\"':
                 *writeIt++ = '\"';
                 break;
@@ -268,7 +268,7 @@ void Json::ParseString() {
                 break;
             // \uXXXX
             case 'u':
-                writeIt = toUtf8(++m_textIt, writeIt);
+                writeIt = toUtf8(m_textIt, writeIt);
                 m_textIt += 4;
                 break;
             default:
