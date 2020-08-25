@@ -14,6 +14,8 @@ struct Line {
 };
 
 struct UserRequest {
+    std::string input;
+    bool updateInput = false;
     bool hideCombiLines = false;
     std::vector<Line> lines;
 };

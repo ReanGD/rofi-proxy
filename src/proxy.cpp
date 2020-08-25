@@ -8,13 +8,13 @@
 #include "exception.h"
 
 extern "C" {
-typedef struct RofiViewState RofiViewState;
-
 extern void rofi_view_reload(void);
 
 extern RofiViewState* rofi_view_get_active(void);
 extern Mode* rofi_view_get_mode(RofiViewState *state);
 extern void rofi_view_switch_mode(RofiViewState *state, Mode *mode);
+extern void rofi_view_clear_input(RofiViewState *state);
+extern void rofi_view_handle_text(RofiViewState *state, char *text);
 extern const char* rofi_view_get_user_input(const RofiViewState *state);
 }
 
@@ -107,18 +107,19 @@ size_t Proxy::GetLinesCount() const {
 }
 
 const char* Proxy::GetLine(size_t index, int* state) {
-    m_logger->Debug("GetLine(%zu)", index);
+    // m_logger->Debug("GetLine(%zu)", index);
     if (index >= m_lastRequest.lines.size()) {
         return nullptr;
     }
 
     if (index == 0) {
-        RofiViewState* viewState = rofi_view_get_active();
-        if (viewState != nullptr) {
-            const char* text = rofi_view_get_user_input(viewState);
-            if ((text != nullptr) && (*text == '\0')) {
-                PreprocessInput(nullptr, text);
-            }
+        RofiViewState* viewState = GetRofiViewState();
+        if (viewState == nullptr) {
+            return nullptr;
+        }
+        const char* text = rofi_view_get_user_input(viewState);
+        if ((text != nullptr) && (*text == '\0')) {
+            PreprocessInput(nullptr, text);
         }
     }
 
@@ -183,10 +184,20 @@ void Proxy::OnReadLine(const char* text) {
 
     try {
         m_lastRequest = m_protocol->ParseRequest(text);
+        RofiViewState* viewState = GetRofiViewState();
+        if (viewState == nullptr) {
+            return;
+        }
+
+        if (m_lastRequest.updateInput) {
+            rofi_view_clear_input(viewState);
+            rofi_view_handle_text(viewState, m_lastRequest.input.data());
+        }
+
         bool needSwitchMode = (m_combiMode != nullptr);
         Mode* newMode = nullptr;
         if (needSwitchMode) {
-            Mode* mode = GetActiveRofiMode();
+            Mode* mode = GetActiveRofiMode(viewState);
             if (mode == nullptr) {
                 return;
             }
@@ -202,7 +213,7 @@ void Proxy::OnReadLine(const char* text) {
         }
 
         if (needSwitchMode) {
-            rofi_view_switch_mode(rofi_view_get_active(), newMode);
+            rofi_view_switch_mode(viewState, newMode);
         } else {
             rofi_view_reload();
         }
@@ -247,9 +258,27 @@ void Proxy::OnProcessExit(int pid, bool normally) {
     }
 }
 
-Mode* Proxy::GetActiveRofiMode() {
+RofiViewState* Proxy::GetRofiViewState() {
     try {
         RofiViewState* viewState = rofi_view_get_active();
+        if (viewState == nullptr) {
+            throw ProxyError("rofi view state is null");
+        }
+
+        return viewState;
+    } catch(const std::exception& e) {
+        m_logger->Error("Error while getting rofi view state: %s", e.what());
+        m_state = State::ErrorProcess;
+        m_process->Kill();
+        return nullptr;
+    }
+}
+
+Mode* Proxy::GetActiveRofiMode(RofiViewState* viewState) {
+    try {
+        if (viewState == nullptr) {
+            viewState = rofi_view_get_active();
+        }
         if (viewState == nullptr) {
             throw ProxyError("rofi view state is null");
         }

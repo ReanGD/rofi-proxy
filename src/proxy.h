@@ -10,6 +10,7 @@
 struct rofi_mode;
 struct rofi_int_matcher_t;
 typedef struct rofi_mode Mode;
+typedef struct RofiViewState RofiViewState;
 typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
 class Proxy : public ProcessHandler {
     enum class State {
@@ -39,7 +40,8 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
-    Mode* GetActiveRofiMode();
+    RofiViewState* GetRofiViewState();
+    Mode* GetActiveRofiMode(RofiViewState* viewState = nullptr);
     void OnSendRequestError(const char* err);
     void Clear();
 
