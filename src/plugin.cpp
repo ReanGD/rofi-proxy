@@ -6,25 +6,19 @@
 #include "proxy.h"
 
 
-static _mode_preprocess_input  combiOriginPreprocessInput = nullptr;
-
-extern "C" {
-extern Mode* rofi_collect_modi_search(const char *name);
-}
-
-static int ProxyInit(Mode *sw);
-static void ProxyDestroy(Mode *sw);
-static unsigned int ProxyGetNumEntries(const Mode *sw);
-static ModeMode ProxyResult(Mode *sw, int mretv, char **input, unsigned int selectedLine);
-static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned int index);
-static char* ProxyGetDisplayValue(const Mode *sw, unsigned int selectedLine, int *state, GList **attrList, int getEntry);
-static char* ProxyPreprocessInput(Mode *sw, const char *input);
+static int ProxyInit(Mode* sw);
+static void ProxyDestroy(Mode* sw);
+static unsigned int ProxyGetNumEntries(const Mode* sw);
+static ModeMode ProxyResult(Mode* sw, int mretv, char** input, unsigned int selectedLine);
+static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher** tokens, unsigned int index);
+static char* ProxyGetDisplayValue(const Mode* sw, unsigned int selectedLine, int* state, GList** attrList, int getEntry);
+static char* ProxyPreprocessInput(Mode* sw, const char* input);
 
 Mode mode = {
     .abi_version        = ABI_VERSION,
-    .name               = const_cast<char*>("proxy"),
+    .name               = g_strdup("proxy"),
     .cfg_name_key       =  {'d','i','s','p','l','a','y','-','p','r','o','x','y', 0},
-    .display_name       = nullptr,
+    .display_name       = g_strdup("proxy"),
     ._init              = ProxyInit,
     ._destroy           = ProxyDestroy,
     ._get_num_entries   = ProxyGetNumEntries,
@@ -41,11 +35,11 @@ Mode mode = {
     .module             = nullptr,
 };
 
-static Proxy* GetProxy(Mode *sw) {
+static Proxy* GetProxy(Mode* sw) {
     return reinterpret_cast<Proxy *>(mode_get_private_data(sw));
 }
 
-static const Proxy* GetProxy(const Mode *sw) {
+static const Proxy* GetProxy(const Mode* sw) {
     return reinterpret_cast<const Proxy *>(mode_get_private_data(sw));
 }
 
@@ -54,15 +48,9 @@ static void logException(const char* func, const std::exception& e) {
     fflush(stderr);
 }
 
-static int ProxyInit(Mode *sw) {
+static int ProxyInit(Mode* sw) {
     try {
-        GetProxy(sw)->Init();
-        Mode* modeCombi = rofi_collect_modi_search("combi");
-        if ((modeCombi != nullptr) && (modeCombi->private_data != nullptr)) {
-            combiOriginPreprocessInput = modeCombi->_preprocess_input;
-            modeCombi->_preprocess_input = ProxyPreprocessInput;
-        }
-
+        GetProxy(sw)->Init(sw);
         return TRUE;
     } catch(const std::exception& e) {
         logException("ProxyInit", e);
@@ -70,7 +58,7 @@ static int ProxyInit(Mode *sw) {
     }
 }
 
-static void ProxyDestroy(Mode *sw) {
+static void ProxyDestroy(Mode* sw) {
     try {
         auto* proxy = GetProxy(sw);
         proxy->Destroy();
@@ -81,7 +69,7 @@ static void ProxyDestroy(Mode *sw) {
     }
 }
 
-static unsigned int ProxyGetNumEntries(const Mode *sw) {
+static unsigned int ProxyGetNumEntries(const Mode* sw) {
     try {
         return static_cast<unsigned int>(GetProxy(sw)->GetLinesCount());
     } catch(const std::exception& e) {
@@ -90,7 +78,7 @@ static unsigned int ProxyGetNumEntries(const Mode *sw) {
     }
 }
 
-static ModeMode ProxyResult(Mode *sw, int mretv, char **/* input */, unsigned int selectedLine) {
+static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLine) {
     ModeMode retv = MODE_EXIT;
 
     if (mretv & MENU_OK) {
@@ -115,7 +103,7 @@ static ModeMode ProxyResult(Mode *sw, int mretv, char **/* input */, unsigned in
     return retv;
 }
 
-static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned int index) {
+static int ProxyTokenMatch(const Mode* sw, rofi_int_matcher** tokens, unsigned int index) {
     try {
         return GetProxy(sw)->TokenMatch(tokens, index) ? TRUE : FALSE;
     } catch(const std::exception& e) {
@@ -124,7 +112,7 @@ static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher **tokens, unsigned i
     }
 }
 
-static char* ProxyGetDisplayValue(const Mode *, unsigned int selectedLine, int *state, GList **, int getEntry) {
+static char* ProxyGetDisplayValue(const Mode*, unsigned int selectedLine, int* state, GList**, int getEntry) {
     try {
         const char* text = GetProxy(&mode)->GetLine(selectedLine, state);
         return getEntry ? g_strdup(text) : nullptr;
@@ -136,12 +124,7 @@ static char* ProxyGetDisplayValue(const Mode *, unsigned int selectedLine, int *
 
 static char* ProxyPreprocessInput(Mode *sw, const char *input) {
     try {
-        if (combiOriginPreprocessInput != nullptr) {
-            input = GetProxy(&mode)->PreprocessInput(input);
-            return combiOriginPreprocessInput(sw, input);
-        } else {
-            return g_strdup(GetProxy(sw)->PreprocessInput(input));
-        }
+        return g_strdup(GetProxy(&mode)->PreprocessInput(sw, input));
     } catch(const std::exception& e) {
         logException("ProxyPreprocessInput", e);
         return nullptr;

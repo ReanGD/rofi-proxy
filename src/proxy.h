@@ -7,7 +7,10 @@
 #include "protocol.h"
 
 
+struct rofi_mode;
 struct rofi_int_matcher_t;
+typedef struct rofi_mode Mode;
+typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
 class Proxy : public ProcessHandler {
     enum class State {
         Running,
@@ -20,13 +23,14 @@ public:
     ~Proxy();
 
 public:
-    void Init();
+    void Init(Mode* proxyMode);
+    void OnPostInit();
     void Destroy();
 
     size_t GetLinesCount() const;
     const char* GetLine(size_t index, int* state);
     bool TokenMatch(rofi_int_matcher_t** tokens, size_t index) const;
-    const char* PreprocessInput(const char *text);
+    const char* PreprocessInput(Mode* sw, const char* text);
     void OnSelectLine(size_t index);
 
 public:
@@ -45,4 +49,8 @@ private:
     std::shared_ptr<Logger> m_logger;
     std::unique_ptr<Process> m_process;
     std::unique_ptr<Protocol> m_protocol;
+
+    Mode* m_proxyMode = nullptr;
+    Mode* m_combiMode = nullptr;
+    PreprocessInputCallback m_combiOriginPreprocessInput = nullptr;
 };

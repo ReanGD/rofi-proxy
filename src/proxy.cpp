@@ -1,16 +1,20 @@
 #include "proxy.h"
 
+#include <rofi/mode.h>
 #include <rofi/helper.h>
+#include <rofi/mode-private.h>
 
 #include "logger.h"
 #include "exception.h"
-
 
 extern "C" {
 typedef struct RofiViewState RofiViewState;
 
 extern void rofi_view_reload(void);
+
 extern RofiViewState* rofi_view_get_active(void);
+extern Mode* rofi_view_get_mode(RofiViewState *state);
+extern void rofi_view_switch_mode(RofiViewState *state, Mode *mode);
 extern const char* rofi_view_get_user_input(const RofiViewState *state);
 }
 
@@ -31,12 +35,22 @@ Proxy::~Proxy() {
 
 }
 
-void Proxy::Init() {
+namespace {
+
+static int OnPostInitHandler(void* ptr) {
+    reinterpret_cast<Proxy*>(ptr)->OnPostInit();
+    return FALSE;
+}
+
+}
+void Proxy::Init(Mode* proxyMode) {
     char* logCmd = nullptr;
     if (find_arg_str("-proxy-log", &logCmd) == TRUE) {
         m_logger->EnableFileLogging();
     }
     m_logger->Debug("Init plugin start");
+
+    m_proxyMode = proxyMode;
 
     char* command = nullptr;
     if (find_arg_str("-proxy-cmd", &command) == TRUE) {
@@ -45,7 +59,30 @@ void Proxy::Init() {
         m_process->Start(nullptr);
     }
 
+    g_idle_add(OnPostInitHandler, this);
+
     m_logger->Debug("Init plugin finished");
+}
+
+void Proxy::OnPostInit() {
+    m_logger->Debug("PostInit plugin start");
+
+    RofiViewState* viewState = rofi_view_get_active();
+    if (viewState == nullptr) {
+        throw ProxyError("RofiViewState is null");
+    }
+
+    Mode* mode = rofi_view_get_mode(viewState);
+    if (std::string(mode->name) == "combi") {
+        m_logger->Debug("Proxy runs under combi plugin");
+        m_combiMode = mode;
+        m_combiOriginPreprocessInput = m_combiMode->_preprocess_input;
+        m_combiMode->_preprocess_input = m_proxyMode->_preprocess_input;
+    } else {
+        m_combiMode = nullptr;
+    }
+
+    m_logger->Debug("PostInit plugin finished");
 }
 
 void Proxy::Destroy() {
@@ -80,7 +117,7 @@ const char* Proxy::GetLine(size_t index, int* state) {
         if (viewState != nullptr) {
             const char* text = rofi_view_get_user_input(viewState);
             if ((text != nullptr) && (*text == '\0')) {
-                PreprocessInput(text);
+                PreprocessInput(nullptr, text);
             }
         }
     }
@@ -104,7 +141,7 @@ bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
     return (helper_token_match(tokens, m_lines[index].text.c_str()) == TRUE);
 }
 
-const char* Proxy::PreprocessInput(const char *text) {
+const char* Proxy::PreprocessInput(Mode* sw, const char* text) {
     m_logger->Debug("PreprocessInput(\"%s\")", text);
     if (m_input == text) {
         return text;
@@ -117,6 +154,10 @@ const char* Proxy::PreprocessInput(const char *text) {
         m_logger->Debug("Send input change request to child process: %s", request.c_str());
     } catch(const std::exception& e) {
         OnSendRequestError(e.what());
+    }
+
+    if ((sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
+        return m_combiOriginPreprocessInput(sw, text);
     }
 
     return text;
