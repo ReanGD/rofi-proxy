@@ -2,6 +2,8 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "exception.h"
 
@@ -34,8 +36,16 @@ void Logger::EnableFileLogging() {
         throw ProxyError("not found env varaibles: XDG_DATA_HOME or HOME");
     }
 
-    auto logPath = XDGDataHome + "/rofi/proxy.log";
-    m_logFd = open(logPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+    auto logDir = XDGDataHome + "/rofi";
+    struct stat st;
+    if (stat(logDir.c_str(), &st) == -1) {
+       if (mkdir(logDir.c_str(), 0755) != 0) {
+           throw ProxyError("can't create directory '%s' for write log", logDir.c_str());
+       }
+    }
+
+    auto logPath = logDir + "/proxy.log";
+    m_logFd = open(logPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
     if (m_logFd < 0) {
         throw ProxyError("can't open file '%s' for write log", logPath.c_str());
     }
