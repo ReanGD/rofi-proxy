@@ -189,30 +189,54 @@ void Proxy::OnReadLine(const char* text) {
             return;
         }
 
-        if (m_lastRequest.updateInput) {
+        if (m_lastRequest.updateInput && (m_input != m_lastRequest.input)) {
+            m_input = m_lastRequest.input;
             rofi_view_clear_input(viewState);
-            rofi_view_handle_text(viewState, m_lastRequest.input.data());
+            char* input = g_strdup(m_input.c_str());
+            rofi_view_handle_text(viewState, input);
+            g_free(input);
         }
 
-        bool needSwitchMode = (m_combiMode != nullptr);
         Mode* newMode = nullptr;
-        if (needSwitchMode) {
-            Mode* mode = GetActiveRofiMode(viewState);
-            if (mode == nullptr) {
-                return;
+        Mode* curMode = GetActiveRofiMode(viewState);
+        if (curMode == nullptr) {
+            return;
+        }
+
+        bool needSwitchModeByPrompt = false;
+        if (m_lastRequest.updatePrompt) {
+            if (m_proxyMode->display_name != m_lastRequest.prompt) {
+                needSwitchModeByPrompt = true;
+                if (m_proxyMode->display_name != nullptr) {
+                    g_free(m_proxyMode->display_name);
+                }
+                m_proxyMode->display_name = g_strdup(m_lastRequest.prompt.c_str());
             }
 
-            newMode = (mode == m_combiMode) ? m_proxyMode : m_combiMode;
-            if (mode == m_combiMode) {
-                needSwitchMode = m_lastRequest.hideCombiLines;
-            } else if (mode == m_proxyMode) {
-                needSwitchMode = !m_lastRequest.hideCombiLines;
-            } else {
-                needSwitchMode = false;
+            if ((m_combiMode != nullptr) && ((m_combiMode->display_name == nullptr) || (m_combiMode->display_name != m_lastRequest.prompt))) {
+                needSwitchModeByPrompt = true;
+                if (m_combiMode->display_name != nullptr) {
+                    g_free(m_combiMode->display_name);
+                }
+                m_combiMode->display_name = g_strdup(m_lastRequest.prompt.c_str());
+            }
+            newMode = curMode;
+        }
+
+        bool needSwitchModeByCombiMode = false;
+        if (m_combiMode != nullptr) {
+            if (curMode == m_combiMode) {
+                needSwitchModeByCombiMode = m_lastRequest.hideCombiLines;
+            } else if (curMode == m_proxyMode) {
+                needSwitchModeByCombiMode = !m_lastRequest.hideCombiLines;
+            }
+
+            if (needSwitchModeByCombiMode) {
+                newMode = m_lastRequest.hideCombiLines ? m_proxyMode : m_combiMode;
             }
         }
 
-        if (needSwitchMode) {
+        if (needSwitchModeByPrompt || needSwitchModeByCombiMode) {
             rofi_view_switch_mode(viewState, newMode);
         } else {
             rofi_view_reload();

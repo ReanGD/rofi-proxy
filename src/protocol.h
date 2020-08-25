@@ -14,6 +14,8 @@ struct Line {
 };
 
 struct UserRequest {
+    std::string prompt;
+    bool updatePrompt = false;
     std::string input;
     bool updateInput = false;
     bool hideCombiLines = false;

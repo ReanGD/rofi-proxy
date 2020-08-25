@@ -18,7 +18,10 @@ UserRequest Protocol::ParseRequest(const char* text) {
     uint32_t keyCount = m_json.Next(TokenType::Object)->size;
     for (uint32_t i=0; i!=keyCount; ++i) {
         auto key = m_json.NextString();
-        if (key == "input") {
+        if (key == "prompt") {
+            result.prompt = m_json.NextString();
+            result.updatePrompt = true;
+        } else if (key == "input") {
             result.input = m_json.NextString();
             result.updateInput = true;
         } else if (key == "hide_combi_lines") {
