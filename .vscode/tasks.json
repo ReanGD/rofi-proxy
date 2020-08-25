@@ -28,6 +28,19 @@
             ]
         },
         {
+            "label": "Run user modes example",
+            "type": "shell",
+            "group": "build",
+            "command": "./example/user_modes.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "Run unicode",
             "type": "shell",
             "group": "build",

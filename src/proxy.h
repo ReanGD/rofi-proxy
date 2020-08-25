@@ -39,18 +39,23 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
+    Mode* GetActiveRofiMode();
     void OnSendRequestError(const char* err);
     void Clear();
 
 private:
-    State m_state = State::Running;
+    // user state
     std::string m_input;
-    std::vector<Line> m_lines;
-    std::shared_ptr<Logger> m_logger;
-    std::unique_ptr<Process> m_process;
-    std::unique_ptr<Protocol> m_protocol;
+    UserRequest m_lastRequest;
 
+    // modes state
     Mode* m_proxyMode = nullptr;
     Mode* m_combiMode = nullptr;
     PreprocessInputCallback m_combiOriginPreprocessInput = nullptr;
+
+    // proxy state
+    State m_state = State::Running;
+    std::shared_ptr<Logger> m_logger;
+    std::unique_ptr<Process> m_process;
+    std::unique_ptr<Protocol> m_protocol;
 };

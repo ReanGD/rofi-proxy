@@ -11,23 +11,29 @@ std::string Protocol::CreateOnSelectLineRequest(const char* text) {
     return detail::Format("{\"name\": \"selected_line\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
 }
 
-std::vector<Line> Protocol::ParseRequest(const char* text) {
+UserRequest Protocol::ParseRequest(const char* text) {
     m_json.Parse(text);
-    m_json.Next(TokenType::Object);
-    if (m_json.NextString() != "lines") {
-        throw ProxyError("unexpected token value");
-    }
 
-    return ParseLines(m_json.Next(TokenType::Array)->size);
-}
-
-std::vector<Line> Protocol::ParseLines(uint32_t itemCount) {
-    std::vector<Line> result;
-    for (uint32_t i=0; i!=itemCount; ++i) {
-        result.push_back(ParseLine(m_json.Next(TokenType::Object)->size));
+    UserRequest result;
+    uint32_t keyCount = m_json.Next(TokenType::Object)->size;
+    for (uint32_t i=0; i!=keyCount; ++i) {
+        auto key = m_json.NextString();
+        if (key == "hide_combi_lines") {
+            result.hideCombiLines = m_json.NextBool();
+        } else if (key == "lines") {
+            ParseLines(m_json.Next(TokenType::Array)->size, result.lines);
+        } else {
+            throw ProxyError("unexpected key in root dict");
+        }
     }
 
     return result;
+}
+
+void Protocol::ParseLines(uint32_t itemCount, std::vector<Line>& result) {
+    for (uint32_t i=0; i!=itemCount; ++i) {
+        result.push_back(ParseLine(m_json.Next(TokenType::Object)->size));
+    }
 }
 
 Line Protocol::ParseLine(uint32_t keyCount) {
@@ -44,7 +50,7 @@ Line Protocol::ParseLine(uint32_t keyCount) {
         } else if (key == "markup") {
             result.markup = m_json.NextBool();
         } else {
-            throw ProxyError("unexpected key in line item");
+            throw ProxyError("unexpected key in line item dict");
         }
     }
 
