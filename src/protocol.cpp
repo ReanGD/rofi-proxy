@@ -24,6 +24,8 @@ UserRequest Protocol::ParseRequest(const char* text) {
         } else if (key == "input") {
             result.input = m_json.NextString();
             result.updateInput = true;
+        } else if (key == "help") {
+            result.help = m_json.NextString();
         } else if (key == "hide_combi_lines") {
             result.hideCombiLines = m_json.NextBool();
         } else if (key == "lines") {

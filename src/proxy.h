@@ -32,6 +32,7 @@ public:
     const char* GetLine(size_t index, int* state);
     bool TokenMatch(rofi_int_matcher_t** tokens, size_t index) const;
     const char* PreprocessInput(Mode* sw, const char* text);
+    const char* GetHelpMessage() const;
     void OnSelectLine(size_t index);
 
 public:

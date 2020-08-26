@@ -164,6 +164,16 @@ const char* Proxy::PreprocessInput(Mode* sw, const char* text) {
     return text;
 }
 
+const char* Proxy::GetHelpMessage() const {
+    if (m_lastRequest.help.empty()) {
+        m_logger->Debug("GetHelpMessage = \"\"");
+        return nullptr;
+    }
+
+    m_logger->Debug("GetHelpMessage = \"%s\"", m_lastRequest.help.c_str());
+    return m_lastRequest.help.c_str();
+}
+
 void Proxy::OnSelectLine(size_t index) {
     m_logger->Debug("OnSelectLine(%zu)", index);
     if (index >= m_lastRequest.lines.size()) {

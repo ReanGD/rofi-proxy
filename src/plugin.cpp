@@ -13,6 +13,7 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char** input, unsigned int sele
 static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher** tokens, unsigned int index);
 static char* ProxyGetDisplayValue(const Mode* sw, unsigned int selectedLine, int* state, GList** attrList, int getEntry);
 static char* ProxyPreprocessInput(Mode* sw, const char* input);
+static char* ProxyGetHelpMessage(const Mode *sw);
 
 Mode mode = {
     .abi_version        = ABI_VERSION,
@@ -28,7 +29,7 @@ Mode mode = {
     ._get_icon          = nullptr,
     ._get_completion    = nullptr,
     ._preprocess_input  = ProxyPreprocessInput,
-    ._get_message       = nullptr,
+    ._get_message       = ProxyGetHelpMessage,
     .private_data       = reinterpret_cast<void *>(new Proxy()),
     .free               = nullptr,
     .ed                 = nullptr,
@@ -127,6 +128,16 @@ static char* ProxyPreprocessInput(Mode *sw, const char *input) {
         return g_strdup(GetProxy(&mode)->PreprocessInput(sw, input));
     } catch(const std::exception& e) {
         logException("ProxyPreprocessInput", e);
+        return nullptr;
+    }
+}
+
+static char* ProxyGetHelpMessage(const Mode *sw) {
+    try {
+        const char* text = GetProxy(sw)->GetHelpMessage();
+        return text == nullptr ? nullptr : g_strdup(text);
+    } catch(const std::exception& e) {
+        logException("ProxyGetHelpMessage", e);
         return nullptr;
     }
 }

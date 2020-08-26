@@ -18,6 +18,7 @@ struct UserRequest {
     bool updatePrompt = false;
     std::string input;
     bool updateInput = false;
+    std::string help;
     bool hideCombiLines = false;
     std::vector<Line> lines;
 };
