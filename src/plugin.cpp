@@ -80,17 +80,27 @@ static unsigned int ProxyGetNumEntries(const Mode* sw) {
 }
 
 static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLine) {
-    ModeMode retv = MODE_EXIT;
-
     if (mretv & MENU_OK) {
         try {
             GetProxy(sw)->OnSelectLine(selectedLine);
         } catch(const std::exception& e) {
-            logException("ProxyResult (", e);
+            logException("ProxyResult (MENU_OK)", e);
         }
         return RELOAD_DIALOG;
     }
 
+    if (mretv & MENU_CANCEL) {
+        try {
+            if (bool exit = GetProxy(sw)->OnCancel(); !exit) {
+                return RELOAD_DIALOG;
+            }
+        } catch(const std::exception& e) {
+            logException("ProxyResult (MENU_CANCEL)", e);
+        }
+        return MODE_EXIT;
+    }
+
+    ModeMode retv = MODE_EXIT;
     if (mretv & MENU_NEXT) {
         retv = NEXT_DIALOG;
     } else if(mretv & MENU_PREVIOUS) {

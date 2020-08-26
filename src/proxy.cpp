@@ -113,13 +113,11 @@ const char* Proxy::GetLine(size_t index, int* state) {
     }
 
     if (index == 0) {
-        RofiViewState* viewState = GetRofiViewState();
-        if (viewState == nullptr) {
-            return nullptr;
-        }
-        const char* text = rofi_view_get_user_input(viewState);
-        if ((text != nullptr) && (*text == '\0')) {
-            PreprocessInput(nullptr, text);
+        if (RofiViewState* viewState = GetRofiViewState(true); viewState != nullptr) {
+            const char* text = rofi_view_get_user_input(viewState);
+            if ((text != nullptr) && (*text == '\0')) {
+                PreprocessInput(nullptr, text);
+            }
         }
     }
 
@@ -187,6 +185,24 @@ void Proxy::OnSelectLine(size_t index) {
     } catch(const std::exception& e) {
         OnSendRequestError(e.what());
     }
+}
+
+bool Proxy::OnCancel() {
+    if (m_lastRequest.exitByCancel) {
+        m_logger->Debug("OnCancel = true (exit)");
+        return true;
+    }
+
+    try {
+        std::string request = m_protocol->CreateOnKeyPressRequest("cancel");
+        m_process->Write(request.c_str());
+        m_logger->Debug("Send on key press request to child process: %s", request.c_str());
+    } catch(const std::exception& e) {
+        OnSendRequestError(e.what());
+    }
+
+    m_logger->Debug("OnCancel = false (not exit)");
+    return false;
 }
 
 void Proxy::OnReadLine(const char* text) {
@@ -292,7 +308,7 @@ void Proxy::OnProcessExit(int pid, bool normally) {
     }
 }
 
-RofiViewState* Proxy::GetRofiViewState() {
+RofiViewState* Proxy::GetRofiViewState(bool skipException) {
     try {
         RofiViewState* viewState = rofi_view_get_active();
         if (viewState == nullptr) {
@@ -301,9 +317,11 @@ RofiViewState* Proxy::GetRofiViewState() {
 
         return viewState;
     } catch(const std::exception& e) {
-        m_logger->Error("Error while getting rofi view state: %s", e.what());
-        m_state = State::ErrorProcess;
-        m_process->Kill();
+        if (!skipException) {
+            m_logger->Error("Error while getting rofi view state: %s", e.what());
+            m_state = State::ErrorProcess;
+            m_process->Kill();
+        }
         return nullptr;
     }
 }

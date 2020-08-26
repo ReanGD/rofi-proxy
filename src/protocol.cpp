@@ -3,6 +3,10 @@
 #include "exception.h"
 
 
+std::string Protocol::CreateOnKeyPressRequest(const char* text) {
+    return detail::Format("{\"name\": \"key_press\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
+}
+
 std::string Protocol::CreateInputChangeRequest(const char* text) {
     return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
 }
@@ -28,6 +32,8 @@ UserRequest Protocol::ParseRequest(const char* text) {
             result.help = m_json.NextString();
         } else if (key == "hide_combi_lines") {
             result.hideCombiLines = m_json.NextBool();
+        } else if (key == "exit_by_cancel") {
+            result.exitByCancel = m_json.NextBool();
         } else if (key == "lines") {
             ParseLines(m_json.Next(TokenType::Array)->size, result.lines);
         } else {

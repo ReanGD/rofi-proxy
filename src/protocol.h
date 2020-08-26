@@ -20,6 +20,7 @@ struct UserRequest {
     bool updateInput = false;
     std::string help;
     bool hideCombiLines = false;
+    bool exitByCancel = true;
     std::vector<Line> lines;
 };
 
@@ -28,6 +29,7 @@ public:
     Protocol() = default;
     ~Protocol() = default;
 
+    std::string CreateOnKeyPressRequest(const char* text);
     std::string CreateInputChangeRequest(const char* text);
     std::string CreateOnSelectLineRequest(const char* text);
     UserRequest ParseRequest(const char* text);

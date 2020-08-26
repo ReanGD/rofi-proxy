@@ -34,6 +34,7 @@ public:
     const char* PreprocessInput(Mode* sw, const char* text);
     const char* GetHelpMessage() const;
     void OnSelectLine(size_t index);
+    bool OnCancel();
 
 public:
     void OnReadLine(const char* text) override;
@@ -41,7 +42,7 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
-    RofiViewState* GetRofiViewState();
+    RofiViewState* GetRofiViewState(bool skipException = false);
     Mode* GetActiveRofiMode(RofiViewState* viewState = nullptr);
     void OnSendRequestError(const char* err);
     void Clear();
