@@ -52,6 +52,19 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "Run custom keys example",
+            "type": "shell",
+            "group": "build",
+            "command": "./example/custom_keys.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }
