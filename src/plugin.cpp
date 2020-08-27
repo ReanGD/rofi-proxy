@@ -116,7 +116,7 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
 
 static int ProxyTokenMatch(const Mode* sw, rofi_int_matcher** tokens, unsigned int index) {
     try {
-        return GetProxy(sw)->TokenMatch(tokens, index) ? TRUE : FALSE;
+        return GetProxy(sw)->OnTokenMatch(tokens, index) ? TRUE : FALSE;
     } catch(const std::exception& e) {
         logException("ProxyTokenMatch", e);
         return FALSE;
@@ -135,7 +135,7 @@ static char* ProxyGetDisplayValue(const Mode*, unsigned int selectedLine, int* s
 
 static char* ProxyPreprocessInput(Mode *sw, const char *input) {
     try {
-        return g_strdup(GetProxy(&mode)->PreprocessInput(sw, input));
+        return g_strdup(GetProxy(&mode)->OnInput(sw, input));
     } catch(const std::exception& e) {
         logException("ProxyPreprocessInput", e);
         return nullptr;

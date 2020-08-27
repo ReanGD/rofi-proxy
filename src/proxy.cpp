@@ -122,7 +122,7 @@ const char* Proxy::GetLine(size_t index, int* state) {
         if (RofiViewState* viewState = GetRofiViewState(true); viewState != nullptr) {
             const char* text = rofi_view_get_user_input(viewState);
             if ((text != nullptr) && (*text == '\0')) {
-                PreprocessInput(nullptr, text);
+                OnInput(nullptr, text);
             }
         }
     }
@@ -131,41 +131,6 @@ const char* Proxy::GetLine(size_t index, int* state) {
         *state |= MARKUP;
     }
     return m_lastRequest.lines[index].text.c_str();
-}
-
-bool Proxy::TokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
-    // m_logger->Debug("TokenMatch(%zu)", index);
-    if (index >= m_lastRequest.lines.size()) {
-        return false;
-    }
-
-    if (!m_lastRequest.lines[index].filtering) {
-        return true;
-    }
-
-    return (helper_token_match(tokens, m_lastRequest.lines[index].text.c_str()) == TRUE);
-}
-
-const char* Proxy::PreprocessInput(Mode* sw, const char* text) {
-    m_logger->Debug("PreprocessInput(\"%s\")", text);
-    if (m_input == text) {
-        return text;
-    }
-
-    try {
-        m_input = text;
-        std::string request = m_protocol->CreateInputChangeRequest(text);
-        m_process->Write(request.c_str());
-        m_logger->Debug("Send input change request to child process: %s", request.c_str());
-    } catch(const std::exception& e) {
-        OnSendRequestError(e.what());
-    }
-
-    if ((sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
-        return m_combiOriginPreprocessInput(sw, text);
-    }
-
-    return text;
 }
 
 const char* Proxy::GetHelpMessage() const {
@@ -178,21 +143,6 @@ const char* Proxy::GetHelpMessage() const {
     return m_lastRequest.help.c_str();
 }
 
-void Proxy::OnSelectLine(size_t index) {
-    m_logger->Debug("OnSelectLine(%zu)", index);
-    if (index >= m_lastRequest.lines.size()) {
-        return;
-    }
-
-    try {
-        std::string request = m_protocol->CreateOnSelectLineRequest(m_lastRequest.lines[index].id.c_str());
-        m_process->Write(request.c_str());
-        m_logger->Debug("Send on select line request to child process: %s", request.c_str());
-    } catch(const std::exception& e) {
-        OnSendRequestError(e.what());
-    }
-}
-
 bool Proxy::OnCancel() {
     if (m_lastRequest.exitByCancel) {
         m_logger->Debug("OnCancel = true (exit)");
@@ -200,15 +150,65 @@ bool Proxy::OnCancel() {
     }
 
     try {
-        std::string request = m_protocol->CreateOnKeyPressRequest("cancel");
-        m_process->Write(request.c_str());
-        m_logger->Debug("Send on key press request to child process: %s", request.c_str());
+        std::string msg = m_protocol->CreateMessageKeyPress("cancel");
+        m_process->Write(msg.c_str());
+        m_logger->Debug("Send message with name \"key_press\" to child process: %s", msg.c_str());
     } catch(const std::exception& e) {
         OnSendRequestError(e.what());
     }
 
     m_logger->Debug("OnCancel = false (not exit)");
     return false;
+}
+
+void Proxy::OnSelectLine(size_t index) {
+    m_logger->Debug("OnSelectLine(%zu)", index);
+    if (index >= m_lastRequest.lines.size()) {
+        return;
+    }
+
+    try {
+        std::string msg = m_protocol->CreateMessageSelectLine(m_lastRequest.lines[index]);
+        m_process->Write(msg.c_str());
+        m_logger->Debug("Send message with name \"select_line\" to child process: %s", msg.c_str());
+    } catch(const std::exception& e) {
+        OnSendRequestError(e.what());
+    }
+}
+
+const char* Proxy::OnInput(Mode* sw, const char* text) {
+    m_logger->Debug("OnInput(\"%s\")", text);
+    if (m_input == text) {
+        return text;
+    }
+
+    try {
+        m_input = text;
+        std::string msg = m_protocol->CreateMessageInput(text);
+        m_process->Write(msg.c_str());
+        m_logger->Debug("Send message with name \"input\" to child process: %s", msg.c_str());
+    } catch(const std::exception& e) {
+        OnSendRequestError(e.what());
+    }
+
+    if ((sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
+        return m_combiOriginPreprocessInput(sw, text);
+    }
+
+    return text;
+}
+
+bool Proxy::OnTokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
+    // m_logger->Debug("OnTokenMatch(%zu)", index);
+    if (index >= m_lastRequest.lines.size()) {
+        return false;
+    }
+
+    if (!m_lastRequest.lines[index].filtering) {
+        return true;
+    }
+
+    return (helper_token_match(tokens, m_lastRequest.lines[index].text.c_str()) == TRUE);
 }
 
 void Proxy::OnReadLine(const char* text) {
@@ -341,7 +341,7 @@ Mode* Proxy::GetActiveRofiMode(RofiViewState* viewState) {
 }
 
 void Proxy::OnSendRequestError(const char* err) {
-    m_logger->Error("Error while send request to child process: %s", err);
+    m_logger->Error("Error while send message to child process: %s", err);
     m_state = State::ErrorProcess;
     m_process->Kill();
 }

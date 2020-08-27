@@ -11,6 +11,7 @@ struct Line {
     bool markup = false;
     std::string id;
     std::string text;
+    std::string group;
 };
 
 struct UserRequest {
@@ -29,9 +30,9 @@ public:
     Protocol() = default;
     ~Protocol() = default;
 
-    std::string CreateOnKeyPressRequest(const char* text);
-    std::string CreateInputChangeRequest(const char* text);
-    std::string CreateOnSelectLineRequest(const char* text);
+    std::string CreateMessageInput(const char* text);
+    std::string CreateMessageKeyPress(const char* text);
+    std::string CreateMessageSelectLine(const Line& line);
     UserRequest ParseRequest(const char* text);
 
 private:

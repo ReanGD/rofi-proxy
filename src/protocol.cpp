@@ -3,16 +3,19 @@
 #include "exception.h"
 
 
-std::string Protocol::CreateOnKeyPressRequest(const char* text) {
-    return detail::Format("{\"name\": \"key_press\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
-}
-
-std::string Protocol::CreateInputChangeRequest(const char* text) {
+std::string Protocol::CreateMessageInput(const char* text) {
     return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
 }
 
-std::string Protocol::CreateOnSelectLineRequest(const char* text) {
-    return detail::Format("{\"name\": \"selected_line\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
+std::string Protocol::CreateMessageKeyPress(const char* text) {
+    return detail::Format("{\"name\": \"key_press\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
+}
+
+std::string Protocol::CreateMessageSelectLine(const Line& line) {
+    return detail::Format("{\"name\": \"select_line\", \"value\": {\"id\": \"%s\", \"text\": \"%s\", \"group\": \"%s\"}}",
+        m_json.EscapeString(line.id.c_str()).c_str(),
+        m_json.EscapeString(line.text.c_str()).c_str(),
+        m_json.EscapeString(line.group.c_str()).c_str());
 }
 
 UserRequest Protocol::ParseRequest(const char* text) {
@@ -55,10 +58,12 @@ Line Protocol::ParseLine(uint32_t keyCount) {
 
     for (uint32_t i=0; i!=keyCount; ++i) {
         auto key = m_json.NextString();
-        if (key == "text") {
-            result.text = m_json.NextString();
-        } else if (key == "id") {
+        if (key == "id") {
             result.id = m_json.NextString();
+        } else if (key == "text") {
+            result.text = m_json.NextString();
+        } else if (key == "group") {
+            result.group = m_json.NextString();
         } else if (key == "filtering") {
             result.filtering = m_json.NextBool();
         } else if (key == "markup") {
@@ -69,10 +74,7 @@ Line Protocol::ParseLine(uint32_t keyCount) {
     }
 
     if (result.text.empty()) {
-        throw ProxyError("line.text is empty");
-    }
-    if (result.id.empty()) {
-        result.id = result.text;
+        throw ProxyError("field \"text\" in section \"lines\" is empty");
     }
 
     return result;
