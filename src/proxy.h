@@ -7,6 +7,7 @@
 #include "protocol.h"
 
 
+class Rofi;
 struct rofi_mode;
 struct rofi_int_matcher_t;
 typedef struct rofi_mode Mode;
@@ -14,6 +15,7 @@ typedef struct RofiViewState RofiViewState;
 typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
 class Proxy : public ProcessHandler {
     enum class State {
+        Starting,
         Running,
         ErrorProcess,
         DestroyProcess,
@@ -58,8 +60,9 @@ private:
     PreprocessInputCallback m_combiOriginPreprocessInput = nullptr;
 
     // proxy state
-    State m_state = State::Running;
+    State m_state = State::Starting;
     std::shared_ptr<Logger> m_logger;
+    std::unique_ptr<Rofi> m_rofi;
     std::unique_ptr<Process> m_process;
     std::unique_ptr<Protocol> m_protocol;
 };

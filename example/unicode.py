@@ -9,6 +9,8 @@ sys.stdout.flush()
 
 for line in sys.stdin:
     j = json.loads(line)
-    if j["name"] == "input":
-        sys.stderr.write(j["value"] + "\n")
-        sys.stderr.flush()
+    if j["name"] != "input":
+        continue
+
+    sys.stderr.write(j["value"] + "\n")
+    sys.stderr.flush()

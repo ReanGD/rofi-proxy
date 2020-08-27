@@ -118,6 +118,10 @@ void Process::Start(const char *command) {
 }
 
 void Process::Write(const char* text) {
+    if (m_writeCh == nullptr) {
+        return;
+    }
+
     GError *error = nullptr;
     Defer _([&](...) mutable {
         if (error != nullptr) {

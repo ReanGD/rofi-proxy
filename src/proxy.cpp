@@ -4,6 +4,7 @@
 #include <rofi/helper.h>
 #include <rofi/mode-private.h>
 
+#include "rofi.h"
 #include "logger.h"
 #include "exception.h"
 
@@ -24,23 +25,24 @@ static const int ACTIVE = 2;
 static const int SELECTED = 4;
 static const int MARKUP = 8;
 
-Proxy::Proxy()
-    : m_logger(std::make_shared<Logger>())
-    , m_process(std::make_unique<Process>(this, m_logger))
-    , m_protocol(std::make_unique<Protocol>()) {
-
-}
-
-Proxy::~Proxy() {
-
-}
-
 namespace {
 
 static int OnPostInitHandler(void* ptr) {
     reinterpret_cast<Proxy*>(ptr)->OnPostInit();
     return FALSE;
 }
+
+}
+
+Proxy::Proxy()
+    : m_logger(std::make_shared<Logger>())
+    , m_rofi(std::make_unique<Rofi>(m_logger))
+    , m_process(std::make_unique<Process>(this, m_logger))
+    , m_protocol(std::make_unique<Protocol>()) {
+
+}
+
+Proxy::~Proxy() {
 
 }
 
@@ -52,14 +54,7 @@ void Proxy::Init(Mode* proxyMode) {
     m_logger->Debug("Init plugin start");
 
     m_proxyMode = proxyMode;
-
-    char* command = nullptr;
-    if (find_arg_str("-proxy-cmd", &command) == TRUE) {
-        m_process->Start(command);
-    } else {
-        m_process->Start(nullptr);
-    }
-
+    m_rofi->SetProxyMode(m_proxyMode);
     g_idle_add(OnPostInitHandler, this);
 
     m_logger->Debug("Init plugin finished");
@@ -78,8 +73,18 @@ void Proxy::OnPostInit() {
         m_combiMode = mode;
         m_combiOriginPreprocessInput = m_combiMode->_preprocess_input;
         m_combiMode->_preprocess_input = m_proxyMode->_preprocess_input;
+        m_rofi->SetCombiMode(m_combiMode);
     } else {
         m_combiMode = nullptr;
+    }
+
+    m_state = State::Running;
+
+    char* command = nullptr;
+    if (find_arg_str("-proxy-cmd", &command) == TRUE) {
+        m_process->Start(command);
+    } else {
+        m_process->Start(nullptr);
     }
 
     m_logger->Debug("PostInit plugin finished");
@@ -96,6 +101,7 @@ void Proxy::Destroy() {
         m_process.reset();
     }
     m_protocol.reset();
+    m_rofi.reset();
     m_logger->Debug("Destroy plugin finished");
     m_logger.reset();
 }
@@ -229,23 +235,8 @@ void Proxy::OnReadLine(const char* text) {
             return;
         }
 
-        bool needSwitchModeByPrompt = false;
-        if (m_lastRequest.updatePrompt) {
-            if (m_proxyMode->display_name != m_lastRequest.prompt) {
-                needSwitchModeByPrompt = true;
-                if (m_proxyMode->display_name != nullptr) {
-                    g_free(m_proxyMode->display_name);
-                }
-                m_proxyMode->display_name = g_strdup(m_lastRequest.prompt.c_str());
-            }
-
-            if ((m_combiMode != nullptr) && ((m_combiMode->display_name == nullptr) || (m_combiMode->display_name != m_lastRequest.prompt))) {
-                needSwitchModeByPrompt = true;
-                if (m_combiMode->display_name != nullptr) {
-                    g_free(m_combiMode->display_name);
-                }
-                m_combiMode->display_name = g_strdup(m_lastRequest.prompt.c_str());
-            }
+        bool needSwitchModeByPrompt = (m_lastRequest.updatePrompt && m_rofi->SetPrompt(m_lastRequest.prompt));
+        if (needSwitchModeByPrompt) {
             newMode = curMode;
         }
 
@@ -358,5 +349,6 @@ void Proxy::OnSendRequestError(const char* err) {
 void Proxy::Clear() {
     m_protocol.reset();
     m_process.reset();
+    m_rofi.reset();
     m_logger.reset();
 }

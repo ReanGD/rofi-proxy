@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run simple calc",
+            "label": "Run simple calc example",
             "type": "shell",
             "group": "build",
             "command": "./example/simple_calc.sh",
@@ -15,7 +15,7 @@
             ],
         },
         {
-            "label": "Run advanced calc",
+            "label": "Run advanced calc example",
             "type": "shell",
             "group": "build",
             "command": "./example/advanced_calc_with_combi.sh",
@@ -28,10 +28,10 @@
             ]
         },
         {
-            "label": "Run user modes example",
+            "label": "Run sub modes example",
             "type": "shell",
             "group": "build",
-            "command": "./example/user_modes.sh",
+            "command": "./example/sub_modes.sh",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
@@ -41,7 +41,7 @@
             ]
         },
         {
-            "label": "Run unicode",
+            "label": "Run unicode example",
             "type": "shell",
             "group": "build",
             "command": "./example/unicode.sh",
