@@ -4,15 +4,23 @@
 
 
 std::string Protocol::CreateMessageInput(const char* text) {
-    return detail::Format("{\"name\": \"input\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
-}
-
-std::string Protocol::CreateMessageKeyPress(const char* text) {
-    return detail::Format("{\"name\": \"key_press\", \"value\": \"%s\"}", m_json.EscapeString(text).c_str());
+    return detail::Format(
+        "{\"name\": \"input\", \"value\": \"%s\"}",
+        m_json.EscapeString(text).c_str());
 }
 
 std::string Protocol::CreateMessageSelectLine(const Line& line) {
-    return detail::Format("{\"name\": \"select_line\", \"value\": {\"id\": \"%s\", \"text\": \"%s\", \"group\": \"%s\"}}",
+    return detail::Format(
+        "{\"name\": \"select_line\", \"value\": {\"id\": \"%s\", \"text\": \"%s\", \"group\": \"%s\"}}",
+        m_json.EscapeString(line.id.c_str()).c_str(),
+        m_json.EscapeString(line.text.c_str()).c_str(),
+        m_json.EscapeString(line.group.c_str()).c_str());
+}
+
+std::string Protocol::CreateMessageKeyPress(const Line& line, const char* keyName) {
+    return detail::Format(
+        "{\"name\": \"key_press\", \"value\": {\"key\": \"%s\", \"line\": {\"id\": \"%s\", \"text\": \"%s\", \"group\": \"%s\"}}}",
+        m_json.EscapeString(keyName).c_str(),
         m_json.EscapeString(line.id.c_str()).c_str(),
         m_json.EscapeString(line.text.c_str()).c_str(),
         m_json.EscapeString(line.group.c_str()).c_str());

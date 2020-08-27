@@ -36,6 +36,7 @@ public:
 
     bool OnCancel();
     void OnSelectLine(size_t index);
+    void OnCustomKey(size_t index, int key);
     const char* OnInput(Mode* sw, const char* text);
     bool OnTokenMatch(rofi_int_matcher_t** tokens, size_t index) const;
 

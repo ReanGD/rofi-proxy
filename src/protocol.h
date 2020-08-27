@@ -31,8 +31,9 @@ public:
     ~Protocol() = default;
 
     std::string CreateMessageInput(const char* text);
-    std::string CreateMessageKeyPress(const char* text);
     std::string CreateMessageSelectLine(const Line& line);
+    std::string CreateMessageKeyPress(const Line& line, const char* keyName);
+
     UserRequest ParseRequest(const char* text);
 
 private:

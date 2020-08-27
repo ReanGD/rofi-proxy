@@ -150,7 +150,7 @@ bool Proxy::OnCancel() {
     }
 
     try {
-        std::string msg = m_protocol->CreateMessageKeyPress("cancel");
+        std::string msg = m_protocol->CreateMessageKeyPress(Line(), "cancel");
         m_process->Write(msg.c_str());
         m_logger->Debug("Send message with name \"key_press\" to child process: %s", msg.c_str());
     } catch(const std::exception& e) {
@@ -176,6 +176,24 @@ void Proxy::OnSelectLine(size_t index) {
     }
 }
 
+void Proxy::OnCustomKey(size_t index, int key) {
+    m_logger->Debug("OnCustomKey(line = %zu, key = %d)", index, key);
+
+    try {
+        auto keyName = "custom_" + std::to_string(key);
+        Line line;
+        if (index < m_lastRequest.lines.size()) {
+            line = m_lastRequest.lines[index];
+        }
+
+        std::string msg = m_protocol->CreateMessageKeyPress(line, keyName.c_str());
+        m_process->Write(msg.c_str());
+        m_logger->Debug("Send message with name \"key_press\" to child process: %s", msg.c_str());
+    } catch(const std::exception& e) {
+        OnSendRequestError(e.what());
+    }
+}
+
 const char* Proxy::OnInput(Mode* sw, const char* text) {
     m_logger->Debug("OnInput(\"%s\")", text);
     if (m_input == text) {
@@ -191,7 +209,7 @@ const char* Proxy::OnInput(Mode* sw, const char* text) {
         OnSendRequestError(e.what());
     }
 
-    if ((sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
+    if ((text != nullptr) && (sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
         return m_combiOriginPreprocessInput(sw, text);
     }
 

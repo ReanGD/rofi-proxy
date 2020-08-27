@@ -80,6 +80,14 @@ static unsigned int ProxyGetNumEntries(const Mode* sw) {
 }
 
 static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLine) {
+    if (mretv & MENU_NEXT) {
+        return NEXT_DIALOG;
+    }
+
+    if (mretv & MENU_PREVIOUS) {
+        return PREVIOUS_DIALOG;
+    }
+
     if (mretv & MENU_OK) {
         try {
             GetProxy(sw)->OnSelectLine(selectedLine);
@@ -100,18 +108,22 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
         return MODE_EXIT;
     }
 
-    ModeMode retv = MODE_EXIT;
-    if (mretv & MENU_NEXT) {
-        retv = NEXT_DIALOG;
-    } else if(mretv & MENU_PREVIOUS) {
-        retv = PREVIOUS_DIALOG;
-    } else if (mretv & MENU_QUICK_SWITCH) {
-        retv = static_cast<ModeMode>(mretv & MENU_LOWER_MASK);
-    } else if ((mretv & MENU_ENTRY_DELETE) == MENU_ENTRY_DELETE) {
-        retv = RELOAD_DIALOG;
+    if (mretv & MENU_QUICK_SWITCH) {
+        try {
+            GetProxy(sw)->OnCustomKey(selectedLine, (mretv & MENU_LOWER_MASK) % 20);
+        } catch(const std::exception& e) {
+            logException("ProxyResult (MENU_QUICK_SWITCH)", e);
+        }
+        return static_cast<ModeMode>(mretv & MENU_LOWER_MASK);
     }
 
-    return retv;
+    // MENU_CUSTOM_INPUT
+    // MENU_CUSTOM_ACTION
+    if (mretv & MENU_ENTRY_DELETE) {
+        return RELOAD_DIALOG;
+    }
+
+    return MODE_EXIT;
 }
 
 static int ProxyTokenMatch(const Mode* sw, rofi_int_matcher** tokens, unsigned int index) {
