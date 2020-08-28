@@ -16,11 +16,17 @@ public:
 public:
     void SetProxyMode(Mode* mode);
     void SetCombiMode(Mode* mode);
+
     // return true if prompt changed
     bool SetPrompt(const std::string& text);
+    void SetOverlay(const std::string& text);
+
+    const char* GetUserInput() noexcept;
 
 private:
-    std::shared_ptr<Logger> m_logger;
+    std::string m_overlay;
+
     Mode* m_proxyMode = nullptr;
     Mode* m_combiMode = nullptr;
+    std::shared_ptr<Logger> m_logger;
 };

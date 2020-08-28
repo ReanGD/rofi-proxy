@@ -7,14 +7,11 @@
 
 
 extern "C" {
-// extern void rofi_view_reload(void);
+typedef struct RofiViewState RofiViewState;
 
-// extern RofiViewState* rofi_view_get_active(void);
-// extern Mode* rofi_view_get_mode(RofiViewState *state);
-// extern void rofi_view_switch_mode(RofiViewState *state, Mode *mode);
-// extern void rofi_view_clear_input(RofiViewState *state);
-// extern void rofi_view_handle_text(RofiViewState *state, char *text);
-// extern const char* rofi_view_get_user_input(const RofiViewState *state);
+extern RofiViewState* rofi_view_get_active(void);
+extern const char* rofi_view_get_user_input(const RofiViewState *state);
+extern void rofi_view_set_overlay(RofiViewState *state, const char *text);
 }
 
 Rofi::Rofi(const std::shared_ptr<Logger>& logger)
@@ -53,4 +50,25 @@ bool Rofi::SetPrompt(const std::string& text) {
     }
 
     return changed;
+}
+
+void Rofi::SetOverlay(const std::string& text) {
+    if (m_overlay == text) {
+        return;
+    }
+
+    if (RofiViewState* viewState = rofi_view_get_active(); viewState != nullptr) {
+        m_overlay = text;
+        rofi_view_set_overlay(viewState, m_overlay.c_str());
+    } else {
+        m_logger->Debug("can't set overlay, rofi view is null");
+    }
+}
+
+const char* Rofi::GetUserInput() noexcept {
+    if (RofiViewState* viewState = rofi_view_get_active(); viewState != nullptr) {
+        return rofi_view_get_user_input(viewState);
+    }
+
+    return nullptr;
 }

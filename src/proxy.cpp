@@ -16,7 +16,6 @@ extern Mode* rofi_view_get_mode(RofiViewState *state);
 extern void rofi_view_switch_mode(RofiViewState *state, Mode *mode);
 extern void rofi_view_clear_input(RofiViewState *state);
 extern void rofi_view_handle_text(RofiViewState *state, char *text);
-extern const char* rofi_view_get_user_input(const RofiViewState *state);
 }
 
 static const int NORMAL = 0;
@@ -119,11 +118,9 @@ const char* Proxy::GetLine(size_t index, int* state) {
     }
 
     if (index == 0) {
-        if (RofiViewState* viewState = GetRofiViewState(true); viewState != nullptr) {
-            const char* text = rofi_view_get_user_input(viewState);
-            if ((text != nullptr) && (*text == '\0')) {
-                OnInput(nullptr, text);
-            }
+        const char* text = m_rofi->GetUserInput();
+        if ((text != nullptr) && (*text == '\0')) {
+            OnInput(nullptr, text);
         }
     }
 
@@ -247,6 +244,10 @@ void Proxy::OnReadLine(const char* text) {
             g_free(input);
         }
 
+        if (m_lastRequest.updateOverlay) {
+            m_rofi->SetOverlay(m_lastRequest.overlay);
+        }
+
         Mode* newMode = nullptr;
         Mode* curMode = GetActiveRofiMode(viewState);
         if (curMode == nullptr) {
@@ -317,7 +318,7 @@ void Proxy::OnProcessExit(int pid, bool normally) {
     }
 }
 
-RofiViewState* Proxy::GetRofiViewState(bool skipException) {
+RofiViewState* Proxy::GetRofiViewState() {
     try {
         RofiViewState* viewState = rofi_view_get_active();
         if (viewState == nullptr) {
@@ -326,11 +327,9 @@ RofiViewState* Proxy::GetRofiViewState(bool skipException) {
 
         return viewState;
     } catch(const std::exception& e) {
-        if (!skipException) {
-            m_logger->Error("Error while getting rofi view state: %s", e.what());
-            m_state = State::ErrorProcess;
-            m_process->Kill();
-        }
+        m_logger->Error("Error while getting rofi view state: %s", e.what());
+        m_state = State::ErrorProcess;
+        m_process->Kill();
         return nullptr;
     }
 }

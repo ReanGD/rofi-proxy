@@ -37,6 +37,8 @@ UserRequest Protocol::ParseRequest(const char* text) {
             result.prompt = m_json.NextStringOrNull(result.updatePrompt);
         } else if (key == "input") {
             result.input = m_json.NextStringOrNull(result.updateInput);
+        } else if (key == "overlay") {
+            result.overlay = m_json.NextStringOrNull(result.updateOverlay);
         } else if (key == "help") {
             bool isString;
             result.help = m_json.NextStringOrNull(isString);

@@ -19,6 +19,8 @@ struct UserRequest {
     bool updatePrompt = false;
     std::string input;
     bool updateInput = false;
+    std::string overlay;
+    bool updateOverlay = false;
     std::string help;
     bool hideCombiLines = false;
     bool exitByCancel = true;

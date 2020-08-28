@@ -46,7 +46,7 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
-    RofiViewState* GetRofiViewState(bool skipException = false);
+    RofiViewState* GetRofiViewState();
     Mode* GetActiveRofiMode(RofiViewState* viewState = nullptr);
     void OnSendRequestError(const char* err);
     void Clear();
