@@ -106,8 +106,38 @@ Token* Json::Next(TokenType expectedType) {
     return token;
 }
 
+void Json::NextNull() {
+    auto text = Next(TokenType::Primitive)->AsString();
+    if (text != "null") {
+        throw ProxyError("unexpected null token value");
+    }
+}
+
 std::string_view Json::NextString() {
     return Next(TokenType::String)->AsString();
+}
+
+std::string_view Json::NextStringOrNull(bool& isString) {
+    Token* token = Next();
+
+    if (token == nullptr) {
+        throw ProxyError("unexpected token type");
+    }
+
+    if (token->type == TokenType::String) {
+        isString = true;
+        return token->AsString();
+    }
+
+    if (token->type == TokenType::Primitive) {
+        isString = false;
+        if (token->AsString() != "null") {
+            throw ProxyError("unexpected null token value");
+        }
+        return std::string_view();
+    }
+
+    throw ProxyError("unexpected token type");
 }
 
 bool Json::NextBool() {
@@ -121,6 +151,17 @@ bool Json::NextBool() {
     }
 
     throw ProxyError("unexpected bool token value");
+}
+
+void Json::NextBoolIsNotNull(bool& value) {
+    auto text = Next(TokenType::Primitive)->AsString();
+    if (text == "true") {
+        value = true;
+    } else if (text == "false") {
+        value = false;
+    } else if (text != "null") {
+        throw ProxyError("unexpected null token value");
+    }
 }
 
 std::string Json::EscapeString(const char* str) {

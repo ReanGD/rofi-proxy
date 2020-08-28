@@ -28,8 +28,11 @@ public:
     void Parse(const char* text);
     [[maybe_unused]] Token* Next();
     [[maybe_unused]] Token* Next(TokenType expectedType);
+    void NextNull();
     std::string_view NextString();
+    std::string_view NextStringOrNull(bool& isString);
     bool NextBool();
+    void NextBoolIsNotNull(bool& value);
 
     std::string EscapeString(const char* str);
 

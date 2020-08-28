@@ -110,7 +110,7 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
 
     if (mretv & MENU_QUICK_SWITCH) {
         try {
-            GetProxy(sw)->OnCustomKey(selectedLine, (mretv & MENU_LOWER_MASK) % 20);
+            GetProxy(sw)->OnCustomKey(selectedLine, ((mretv & MENU_LOWER_MASK) % 20) + 1);
         } catch(const std::exception& e) {
             logException("ProxyResult (MENU_QUICK_SWITCH)", e);
         }

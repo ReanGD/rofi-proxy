@@ -34,21 +34,20 @@ UserRequest Protocol::ParseRequest(const char* text) {
     for (uint32_t i=0; i!=keyCount; ++i) {
         auto key = m_json.NextString();
         if (key == "prompt") {
-            result.prompt = m_json.NextString();
-            result.updatePrompt = true;
+            result.prompt = m_json.NextStringOrNull(result.updatePrompt);
         } else if (key == "input") {
-            result.input = m_json.NextString();
-            result.updateInput = true;
+            result.input = m_json.NextStringOrNull(result.updateInput);
         } else if (key == "help") {
-            result.help = m_json.NextString();
+            bool isString;
+            result.help = m_json.NextStringOrNull(isString);
         } else if (key == "hide_combi_lines") {
-            result.hideCombiLines = m_json.NextBool();
+            m_json.NextBoolIsNotNull(result.hideCombiLines);
         } else if (key == "exit_by_cancel") {
-            result.exitByCancel = m_json.NextBool();
+            m_json.NextBoolIsNotNull(result.exitByCancel);
         } else if (key == "lines") {
             ParseLines(m_json.Next(TokenType::Array)->size, result.lines);
         } else {
-            throw ProxyError("unexpected key in root dict");
+            throw ProxyError("unexpected key \"%s\" in root dict", std::string(key).c_str());
         }
     }
 
@@ -63,21 +62,21 @@ void Protocol::ParseLines(uint32_t itemCount, std::vector<Line>& result) {
 
 Line Protocol::ParseLine(uint32_t keyCount) {
     Line result;
-
+    bool isString;
     for (uint32_t i=0; i!=keyCount; ++i) {
         auto key = m_json.NextString();
         if (key == "id") {
-            result.id = m_json.NextString();
+            result.id = m_json.NextStringOrNull(isString);
         } else if (key == "text") {
             result.text = m_json.NextString();
         } else if (key == "group") {
-            result.group = m_json.NextString();
+            result.group = m_json.NextStringOrNull(isString);
         } else if (key == "filtering") {
-            result.filtering = m_json.NextBool();
+            m_json.NextBoolIsNotNull(result.filtering);
         } else if (key == "markup") {
-            result.markup = m_json.NextBool();
+            m_json.NextBoolIsNotNull(result.markup);
         } else {
-            throw ProxyError("unexpected key in line item dict");
+            throw ProxyError("unexpected key \"%s\" in line item dict", std::string(key).c_str());
         }
     }
 
