@@ -3,6 +3,7 @@
 import sys
 import json
 
+
 for line in sys.stdin:
     j = json.loads(line)
     if j["name"] != "input":
