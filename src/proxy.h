@@ -8,10 +8,10 @@
 
 
 class Rofi;
-struct rofi_mode;
 struct rofi_int_matcher_t;
 typedef struct rofi_mode Mode;
 typedef struct RofiViewState RofiViewState;
+typedef struct _cairo_surface cairo_surface_t;
 typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
 class Proxy : public ProcessHandler {
     enum class State {
@@ -33,6 +33,7 @@ public:
     size_t GetLinesCount() const;
     const char* GetLine(size_t index, int* state);
     const char* GetHelpMessage() const;
+    cairo_surface_t* GetIcon(size_t index, int height);
 
     bool OnCancel();
     void OnSelectLine(size_t index);

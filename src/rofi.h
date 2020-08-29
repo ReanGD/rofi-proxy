@@ -4,8 +4,8 @@
 #include <string>
 
 
-struct rofi_mode;
 typedef struct rofi_mode Mode;
+typedef struct _cairo_surface cairo_surface_t;
 class Logger;
 class Rofi {
 public:
@@ -16,6 +16,8 @@ public:
 public:
     void SetProxyMode(Mode* mode);
     void SetCombiMode(Mode* mode);
+
+    cairo_surface_t* GetIcon(uint32_t& uid, const std::string& name, int size);
 
     // return true if prompt changed
     bool UpdatePrompt(const std::string& text);

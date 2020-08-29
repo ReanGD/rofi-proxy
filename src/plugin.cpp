@@ -12,6 +12,7 @@ static unsigned int ProxyGetNumEntries(const Mode* sw);
 static ModeMode ProxyResult(Mode* sw, int mretv, char** input, unsigned int selectedLine);
 static int ProxyTokenMatch(const Mode *sw, rofi_int_matcher** tokens, unsigned int index);
 static char* ProxyGetDisplayValue(const Mode* sw, unsigned int selectedLine, int* state, GList** attrList, int getEntry);
+static cairo_surface_t* GetIcon(const Mode* sw, unsigned int selectedLine, int height);
 static char* ProxyPreprocessInput(Mode* sw, const char* input);
 static char* ProxyGetHelpMessage(const Mode *sw);
 
@@ -26,7 +27,7 @@ Mode mode = {
     ._result            = ProxyResult,
     ._token_match       = ProxyTokenMatch,
     ._get_display_value = ProxyGetDisplayValue,
-    ._get_icon          = nullptr,
+    ._get_icon          = GetIcon,
     ._get_completion    = nullptr,
     ._preprocess_input  = ProxyPreprocessInput,
     ._get_message       = ProxyGetHelpMessage,
@@ -141,6 +142,15 @@ static char* ProxyGetDisplayValue(const Mode*, unsigned int selectedLine, int* s
         return getEntry ? g_strdup(text) : nullptr;
     } catch(const std::exception& e) {
         logException("ProxyGetDisplayValue", e);
+        return nullptr;
+    }
+}
+
+static cairo_surface_t* GetIcon(const Mode*, unsigned int selectedLine, int height) {
+    try {
+        return GetProxy(&mode)->GetIcon(selectedLine, height);
+    } catch(const std::exception& e) {
+        logException("GetIcon", e);
         return nullptr;
     }
 }

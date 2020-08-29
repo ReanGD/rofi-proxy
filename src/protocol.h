@@ -12,6 +12,8 @@ struct Line {
     std::string id;
     std::string text;
     std::string group;
+    std::string icon;
+    uint32_t iconUID = 0;
 };
 
 struct UserRequest {

@@ -138,6 +138,20 @@ const char* Proxy::GetHelpMessage() const {
     return m_help.c_str();
 }
 
+cairo_surface_t* Proxy::GetIcon(size_t index, int height) {
+    m_logger->Debug("GetIcon(%zu, %d)", index, height);
+    if (index >= m_request.lines.size()) {
+        return nullptr;
+    }
+
+    const std::string& name = m_request.lines[index].icon;
+    if (name.empty()) {
+        return nullptr;
+    }
+
+    return m_rofi->GetIcon(m_request.lines[index].iconUID, name, height);
+}
+
 bool Proxy::OnCancel() {
     if (m_request.exitByCancel) {
         m_logger->Debug("OnCancel = true (exit)");

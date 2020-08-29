@@ -4,7 +4,7 @@ import sys
 import json
 
 
-req = {"lines": [{"text": "HelloПриветPërshëndetje", "filtering": False}]}
+req = {"lines": [{"text": "HelloПриветPërshëndetje", "filtering": False, "icon": "applications-internet"}]}
 sys.stdout.write(json.dumps(req) + "\n")
 sys.stdout.flush()
 

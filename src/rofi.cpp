@@ -1,7 +1,10 @@
 #include "rofi.h"
 
+extern "C" {
 #include <rofi/mode.h>
 #include <rofi/mode-private.h>
+#include <rofi/rofi-icon-fetcher.h>
+}
 
 #include "logger.h"
 
@@ -32,6 +35,13 @@ void Rofi::SetProxyMode(Mode* mode) {
 
 void Rofi::SetCombiMode(Mode* mode) {
     m_combiMode = mode;
+}
+
+cairo_surface_t* Rofi::GetIcon(uint32_t& uid, const std::string& name, int size) {
+    if (uid == 0) {
+        uid = rofi_icon_fetcher_query(name.c_str(), size);
+    }
+    return rofi_icon_fetcher_get(uid);
 }
 
 bool Rofi::UpdatePrompt(const std::string& text) {

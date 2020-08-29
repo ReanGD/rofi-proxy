@@ -72,6 +72,8 @@ Line Protocol::ParseLine(uint32_t keyCount) {
             result.text = m_json.NextString();
         } else if (key == "group") {
             result.group = m_json.NextStringOrNull(isString);
+        } else if (key == "icon") {
+            result.icon = m_json.NextStringOrNull(isString);
         } else if (key == "filtering") {
             m_json.NextBoolIsNotNull(result.filtering);
         } else if (key == "markup") {
