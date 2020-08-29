@@ -40,8 +40,7 @@ UserRequest Protocol::ParseRequest(const char* text) {
         } else if (key == "overlay") {
             result.overlay = m_json.NextStringOrNull(result.updateOverlay);
         } else if (key == "help") {
-            bool isString;
-            result.help = m_json.NextStringOrNull(isString);
+            result.help = m_json.NextStringOrNull(result.updateHelp);
         } else if (key == "hide_combi_lines") {
             m_json.NextBoolIsNotNull(result.hideCombiLines);
         } else if (key == "exit_by_cancel") {

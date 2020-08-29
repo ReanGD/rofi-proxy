@@ -22,6 +22,7 @@ struct UserRequest {
     std::string overlay;
     bool updateOverlay = false;
     std::string help;
+    bool updateHelp = false;
     bool hideCombiLines = false;
     bool exitByCancel = true;
     std::vector<Line> lines;

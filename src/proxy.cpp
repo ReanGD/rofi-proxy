@@ -14,8 +14,6 @@ extern void rofi_view_reload(void);
 extern RofiViewState* rofi_view_get_active(void);
 extern Mode* rofi_view_get_mode(RofiViewState *state);
 extern void rofi_view_switch_mode(RofiViewState *state, Mode *mode);
-extern void rofi_view_clear_input(RofiViewState *state);
-extern void rofi_view_handle_text(RofiViewState *state, char *text);
 }
 
 static const int NORMAL = 0;
@@ -106,42 +104,42 @@ void Proxy::Destroy() {
 }
 
 size_t Proxy::GetLinesCount() const {
-    size_t result = m_lastRequest.lines.size();
+    size_t result = m_request.lines.size();
     m_logger->Debug("GetLinesCount = %zu", result);
     return result;
 }
 
 const char* Proxy::GetLine(size_t index, int* state) {
     // m_logger->Debug("GetLine(%zu)", index);
-    if (index >= m_lastRequest.lines.size()) {
+    if (index >= m_request.lines.size()) {
         return nullptr;
     }
 
     if (index == 0) {
-        const char* text = m_rofi->GetUserInput();
+        const char* text = m_rofi->GetActualUserInput();
         if ((text != nullptr) && (*text == '\0')) {
             OnInput(nullptr, text);
         }
     }
 
-    if (m_lastRequest.lines[index].markup) {
+    if (m_request.lines[index].markup) {
         *state |= MARKUP;
     }
-    return m_lastRequest.lines[index].text.c_str();
+    return m_request.lines[index].text.c_str();
 }
 
 const char* Proxy::GetHelpMessage() const {
-    if (m_lastRequest.help.empty()) {
+    if (m_help.empty()) {
         m_logger->Debug("GetHelpMessage = \"\"");
         return nullptr;
     }
 
-    m_logger->Debug("GetHelpMessage = \"%s\"", m_lastRequest.help.c_str());
-    return m_lastRequest.help.c_str();
+    m_logger->Debug("GetHelpMessage = \"%s\"", m_help.c_str());
+    return m_help.c_str();
 }
 
 bool Proxy::OnCancel() {
-    if (m_lastRequest.exitByCancel) {
+    if (m_request.exitByCancel) {
         m_logger->Debug("OnCancel = true (exit)");
         return true;
     }
@@ -160,12 +158,12 @@ bool Proxy::OnCancel() {
 
 void Proxy::OnSelectLine(size_t index) {
     m_logger->Debug("OnSelectLine(%zu)", index);
-    if (index >= m_lastRequest.lines.size()) {
+    if (index >= m_request.lines.size()) {
         return;
     }
 
     try {
-        std::string msg = m_protocol->CreateMessageSelectLine(m_lastRequest.lines[index]);
+        std::string msg = m_protocol->CreateMessageSelectLine(m_request.lines[index]);
         m_process->Write(msg.c_str());
         m_logger->Debug("Send message with name \"select_line\" to child process: %s", msg.c_str());
     } catch(const std::exception& e) {
@@ -179,8 +177,8 @@ void Proxy::OnCustomKey(size_t index, int key) {
     try {
         auto keyName = "custom_" + std::to_string(key);
         Line line;
-        if (index < m_lastRequest.lines.size()) {
-            line = m_lastRequest.lines[index];
+        if (index < m_request.lines.size()) {
+            line = m_request.lines[index];
         }
 
         std::string msg = m_protocol->CreateMessageKeyPress(line, keyName.c_str());
@@ -192,13 +190,13 @@ void Proxy::OnCustomKey(size_t index, int key) {
 }
 
 const char* Proxy::OnInput(Mode* sw, const char* text) {
-    m_logger->Debug("OnInput(\"%s\")", text);
-    if (m_input == text) {
+    if (m_rofi->GetCachedUserInput() == text) {
         return text;
     }
+    m_logger->Debug("OnInput(\"%s\")", text);
 
     try {
-        m_input = text;
+        m_rofi->SetCachedUserInput(text);
         std::string msg = m_protocol->CreateMessageInput(text);
         m_process->Write(msg.c_str());
         m_logger->Debug("Send message with name \"input\" to child process: %s", msg.c_str());
@@ -215,37 +213,37 @@ const char* Proxy::OnInput(Mode* sw, const char* text) {
 
 bool Proxy::OnTokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
     // m_logger->Debug("OnTokenMatch(%zu)", index);
-    if (index >= m_lastRequest.lines.size()) {
+    if (index >= m_request.lines.size()) {
         return false;
     }
 
-    if (!m_lastRequest.lines[index].filtering) {
+    if (!m_request.lines[index].filtering) {
         return true;
     }
 
-    return (helper_token_match(tokens, m_lastRequest.lines[index].text.c_str()) == TRUE);
+    return (helper_token_match(tokens, m_request.lines[index].text.c_str()) == TRUE);
 }
 
 void Proxy::OnReadLine(const char* text) {
     m_logger->Debug("Get request from child process: %s", text);
 
     try {
-        m_lastRequest = m_protocol->ParseRequest(text);
+        m_request = m_protocol->ParseRequest(text);
         RofiViewState* viewState = GetRofiViewState();
         if (viewState == nullptr) {
             return;
         }
 
-        if (m_lastRequest.updateInput && (m_input != m_lastRequest.input)) {
-            m_input = m_lastRequest.input;
-            rofi_view_clear_input(viewState);
-            char* input = g_strdup(m_input.c_str());
-            rofi_view_handle_text(viewState, input);
-            g_free(input);
+        if (m_request.updateHelp) {
+            m_help = m_request.help;
         }
 
-        if (m_lastRequest.updateOverlay) {
-            m_rofi->SetOverlay(m_lastRequest.overlay);
+        if (m_request.updateInput) {
+            m_rofi->UpdateUserInput(m_request.input);
+        }
+
+        if (m_request.updateOverlay) {
+            m_rofi->UpdateOverlay(m_request.overlay);
         }
 
         Mode* newMode = nullptr;
@@ -254,7 +252,7 @@ void Proxy::OnReadLine(const char* text) {
             return;
         }
 
-        bool needSwitchModeByPrompt = (m_lastRequest.updatePrompt && m_rofi->SetPrompt(m_lastRequest.prompt));
+        bool needSwitchModeByPrompt = (m_request.updatePrompt && m_rofi->UpdatePrompt(m_request.prompt));
         if (needSwitchModeByPrompt) {
             newMode = curMode;
         }
@@ -262,13 +260,13 @@ void Proxy::OnReadLine(const char* text) {
         bool needSwitchModeByCombiMode = false;
         if (m_combiMode != nullptr) {
             if (curMode == m_combiMode) {
-                needSwitchModeByCombiMode = m_lastRequest.hideCombiLines;
+                needSwitchModeByCombiMode = m_request.hideCombiLines;
             } else if (curMode == m_proxyMode) {
-                needSwitchModeByCombiMode = !m_lastRequest.hideCombiLines;
+                needSwitchModeByCombiMode = !m_request.hideCombiLines;
             }
 
             if (needSwitchModeByCombiMode) {
-                newMode = m_lastRequest.hideCombiLines ? m_proxyMode : m_combiMode;
+                newMode = m_request.hideCombiLines ? m_proxyMode : m_combiMode;
             }
         }
 

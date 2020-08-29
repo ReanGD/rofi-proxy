@@ -53,8 +53,8 @@ private:
 
 private:
     // user state
-    std::string m_input;
-    UserRequest m_lastRequest;
+    std::string m_help;
+    UserRequest m_request;
 
     // modes state
     Mode* m_proxyMode = nullptr;

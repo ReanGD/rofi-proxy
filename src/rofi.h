@@ -18,12 +18,17 @@ public:
     void SetCombiMode(Mode* mode);
 
     // return true if prompt changed
-    bool SetPrompt(const std::string& text);
-    void SetOverlay(const std::string& text);
+    bool UpdatePrompt(const std::string& text);
+    void UpdateOverlay(const std::string& text);
 
-    const char* GetUserInput() noexcept;
+    std::string GetCachedUserInput() const;
+    void SetCachedUserInput(const std::string& text);
+
+    const char* GetActualUserInput() noexcept;
+    void UpdateUserInput(const std::string& text);
 
 private:
+    std::string m_input;
     std::string m_overlay;
 
     Mode* m_proxyMode = nullptr;
