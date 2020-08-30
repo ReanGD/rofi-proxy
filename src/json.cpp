@@ -153,15 +153,24 @@ bool Json::NextBool() {
     throw ProxyError("unexpected bool token value");
 }
 
-void Json::NextBoolIsNotNull(bool& value) {
+bool Json::NextBoolOrNull(bool& isBool) {
     auto text = Next(TokenType::Primitive)->AsString();
     if (text == "true") {
-        value = true;
-    } else if (text == "false") {
-        value = false;
-    } else if (text != "null") {
-        throw ProxyError("unexpected null token value");
+        isBool = true;
+        return true;
     }
+
+    if (text == "false") {
+        isBool = true;
+        return false;
+    }
+
+    if (text == "null") {
+        isBool = false;
+        return false;
+    }
+
+    throw ProxyError("unexpected null token value");
 }
 
 std::string Json::EscapeString(const char* str) {

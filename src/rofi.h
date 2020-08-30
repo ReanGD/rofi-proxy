@@ -5,6 +5,7 @@
 
 
 typedef struct rofi_mode Mode;
+typedef struct RofiViewState RofiViewState;
 typedef struct _cairo_surface cairo_surface_t;
 class Logger;
 class Rofi {
@@ -15,23 +16,30 @@ public:
 
 public:
     void SetProxyMode(Mode* mode);
-    void SetCombiMode(Mode* mode);
+    Mode* ReadCombiMode();
 
+    std::string GetCachedUserInput() const { return m_input; }
+    void SetCachedUserInput(const std::string& text) { m_input = text; }
+    const char* GetActualUserInput() noexcept;
     cairo_surface_t* GetIcon(uint32_t& uid, const std::string& name, int size);
 
-    // return true if prompt changed
-    bool UpdatePrompt(const std::string& text);
+    void StartUpdate();
+    void ApplyUpdate();
+
+    void UpdatePrompt(const std::string& text);
     void UpdateOverlay(const std::string& text);
-
-    std::string GetCachedUserInput() const;
-    void SetCachedUserInput(const std::string& text);
-
-    const char* GetActualUserInput() noexcept;
+    void UpdateHideCombiLines(bool value);
     void UpdateUserInput(const std::string& text);
 
 private:
     std::string m_input;
     std::string m_overlay;
+
+    bool m_updateMode = false;
+    bool m_updatePrompt = false;
+    RofiViewState* m_viewState = nullptr;
+    Mode* m_currentMode = nullptr;
+    Mode* m_newMode = nullptr;
 
     Mode* m_proxyMode = nullptr;
     Mode* m_combiMode = nullptr;

@@ -32,7 +32,7 @@ public:
     std::string_view NextString();
     std::string_view NextStringOrNull(bool& isString);
     bool NextBool();
-    void NextBoolIsNotNull(bool& value);
+    bool NextBoolOrNull(bool& isBool);
 
     std::string EscapeString(const char* str);
 

@@ -42,9 +42,9 @@ UserRequest Protocol::ParseRequest(const char* text) {
         } else if (key == "help") {
             result.help = m_json.NextStringOrNull(result.updateHelp);
         } else if (key == "hide_combi_lines") {
-            m_json.NextBoolIsNotNull(result.hideCombiLines);
+            result.hideCombiLines = m_json.NextBoolOrNull(result.updateHideCombiLines);
         } else if (key == "exit_by_cancel") {
-            m_json.NextBoolIsNotNull(result.exitByCancel);
+            result.exitByCancel = m_json.NextBoolOrNull(result.updateExitByCancel);
         } else if (key == "lines") {
             ParseLines(m_json.Next(TokenType::Array)->size, result.lines);
         } else {
@@ -63,21 +63,27 @@ void Protocol::ParseLines(uint32_t itemCount, std::vector<Line>& result) {
 
 Line Protocol::ParseLine(uint32_t keyCount) {
     Line result;
-    bool isString;
+    bool isValue;
     for (uint32_t i=0; i!=keyCount; ++i) {
         auto key = m_json.NextString();
         if (key == "id") {
-            result.id = m_json.NextStringOrNull(isString);
+            result.id = m_json.NextStringOrNull(isValue);
         } else if (key == "text") {
             result.text = m_json.NextString();
         } else if (key == "group") {
-            result.group = m_json.NextStringOrNull(isString);
+            result.group = m_json.NextStringOrNull(isValue);
         } else if (key == "icon") {
-            result.icon = m_json.NextStringOrNull(isString);
+            result.icon = m_json.NextStringOrNull(isValue);
         } else if (key == "filtering") {
-            m_json.NextBoolIsNotNull(result.filtering);
+            bool value = m_json.NextBoolOrNull(isValue);
+            if (isValue) {
+                result.filtering = value;
+            }
         } else if (key == "markup") {
-            m_json.NextBoolIsNotNull(result.markup);
+            bool value = m_json.NextBoolOrNull(isValue);
+            if (isValue) {
+                result.markup = value;
+            }
         } else {
             throw ProxyError("unexpected key \"%s\" in line item dict", std::string(key).c_str());
         }

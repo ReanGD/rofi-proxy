@@ -26,7 +26,9 @@ struct UserRequest {
     std::string help;
     bool updateHelp = false;
     bool hideCombiLines = false;
+    bool updateHideCombiLines = false;
     bool exitByCancel = true;
+    bool updateExitByCancel = false;
     std::vector<Line> lines;
 };
 

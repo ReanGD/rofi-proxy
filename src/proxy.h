@@ -47,14 +47,13 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
-    RofiViewState* GetRofiViewState();
-    Mode* GetActiveRofiMode(RofiViewState* viewState = nullptr);
     void OnSendRequestError(const char* err);
     void Clear();
 
 private:
     // user state
     std::string m_help;
+    bool m_exitByCancel = true;
     UserRequest m_request;
 
     // modes state

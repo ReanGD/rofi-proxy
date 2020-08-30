@@ -8,13 +8,6 @@
 #include "logger.h"
 #include "exception.h"
 
-extern "C" {
-extern void rofi_view_reload(void);
-
-extern RofiViewState* rofi_view_get_active(void);
-extern Mode* rofi_view_get_mode(RofiViewState *state);
-extern void rofi_view_switch_mode(RofiViewState *state, Mode *mode);
-}
 
 static const int NORMAL = 0;
 static const int URGENT = 1;
@@ -60,19 +53,11 @@ void Proxy::Init(Mode* proxyMode) {
 void Proxy::OnPostInit() {
     m_logger->Debug("PostInit plugin start");
 
-    Mode* mode = GetActiveRofiMode();
-    if (mode == nullptr) {
-        return;
-    }
-
-    if (std::string(mode->name) == "combi") {
+    m_combiMode = m_rofi->ReadCombiMode();
+    if (m_combiMode != nullptr) {
         m_logger->Debug("Proxy runs under combi plugin");
-        m_combiMode = mode;
         m_combiOriginPreprocessInput = m_combiMode->_preprocess_input;
         m_combiMode->_preprocess_input = m_proxyMode->_preprocess_input;
-        m_rofi->SetCombiMode(m_combiMode);
-    } else {
-        m_combiMode = nullptr;
     }
 
     m_state = State::Running;
@@ -153,7 +138,7 @@ cairo_surface_t* Proxy::GetIcon(size_t index, int height) {
 }
 
 bool Proxy::OnCancel() {
-    if (m_request.exitByCancel) {
+    if (m_exitByCancel) {
         m_logger->Debug("OnCancel = true (exit)");
         return true;
     }
@@ -243,13 +228,15 @@ void Proxy::OnReadLine(const char* text) {
 
     try {
         m_request = m_protocol->ParseRequest(text);
-        RofiViewState* viewState = GetRofiViewState();
-        if (viewState == nullptr) {
-            return;
-        }
+
+        m_rofi->StartUpdate();
 
         if (m_request.updateHelp) {
             m_help = m_request.help;
+        }
+
+        if (m_request.updateExitByCancel) {
+            m_exitByCancel = m_request.exitByCancel;
         }
 
         if (m_request.updateInput) {
@@ -260,37 +247,17 @@ void Proxy::OnReadLine(const char* text) {
             m_rofi->UpdateOverlay(m_request.overlay);
         }
 
-        Mode* newMode = nullptr;
-        Mode* curMode = GetActiveRofiMode(viewState);
-        if (curMode == nullptr) {
-            return;
+        if (m_request.updatePrompt) {
+            m_rofi->UpdatePrompt(m_request.prompt);
         }
 
-        bool needSwitchModeByPrompt = (m_request.updatePrompt && m_rofi->UpdatePrompt(m_request.prompt));
-        if (needSwitchModeByPrompt) {
-            newMode = curMode;
+        if (m_request.updateHideCombiLines) {
+            m_rofi->UpdateHideCombiLines(m_request.hideCombiLines);
         }
 
-        bool needSwitchModeByCombiMode = false;
-        if (m_combiMode != nullptr) {
-            if (curMode == m_combiMode) {
-                needSwitchModeByCombiMode = m_request.hideCombiLines;
-            } else if (curMode == m_proxyMode) {
-                needSwitchModeByCombiMode = !m_request.hideCombiLines;
-            }
-
-            if (needSwitchModeByCombiMode) {
-                newMode = m_request.hideCombiLines ? m_proxyMode : m_combiMode;
-            }
-        }
-
-        if (needSwitchModeByPrompt || needSwitchModeByCombiMode) {
-            rofi_view_switch_mode(viewState, newMode);
-        } else {
-            rofi_view_reload();
-        }
+        m_rofi->ApplyUpdate();
     } catch(const std::exception& e) {
-        m_logger->Error("Error while parse child process request: %s", e.what());
+        m_logger->Error("Error error while applying state from child process request: %s", e.what());
         m_state = State::ErrorProcess;
         m_process->Kill();
     }
@@ -327,45 +294,6 @@ void Proxy::OnProcessExit(int pid, bool normally) {
     if (m_state == State::DestroyProcess) {
         m_logger->Debug("Child process %" G_PID_FORMAT " exited %s", pid, normally ? "normally" : "abnormally");
         m_state = State::ChildFinished;
-    }
-}
-
-RofiViewState* Proxy::GetRofiViewState() {
-    try {
-        RofiViewState* viewState = rofi_view_get_active();
-        if (viewState == nullptr) {
-            throw ProxyError("rofi view state is null");
-        }
-
-        return viewState;
-    } catch(const std::exception& e) {
-        m_logger->Error("Error while getting rofi view state: %s", e.what());
-        m_state = State::ErrorProcess;
-        m_process->Kill();
-        return nullptr;
-    }
-}
-
-Mode* Proxy::GetActiveRofiMode(RofiViewState* viewState) {
-    try {
-        if (viewState == nullptr) {
-            viewState = rofi_view_get_active();
-        }
-        if (viewState == nullptr) {
-            throw ProxyError("rofi view state is null");
-        }
-
-        Mode* mode = rofi_view_get_mode(viewState);
-        if (mode == nullptr) {
-            throw ProxyError("rofi view mode is null");
-        }
-
-        return mode;
-    } catch(const std::exception& e) {
-        m_logger->Error("Error while getting active rofi mode: %s", e.what());
-        m_state = State::ErrorProcess;
-        m_process->Kill();
-        return nullptr;
     }
 }
 
