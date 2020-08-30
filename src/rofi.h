@@ -7,6 +7,7 @@
 typedef struct rofi_mode Mode;
 typedef struct RofiViewState RofiViewState;
 typedef struct _cairo_surface cairo_surface_t;
+typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
 class Logger;
 class Rofi {
 public:
@@ -16,11 +17,13 @@ public:
 
 public:
     void SetProxyMode(Mode* mode);
-    Mode* ReadCombiMode();
+    void OnPostInit();
 
     std::string GetCachedUserInput() const { return m_input; }
     void SetCachedUserInput(const std::string& text) { m_input = text; }
     const char* GetActualUserInput() noexcept;
+    const char* CallOriginPreprocessInput(Mode* sw, const char* text);
+
     cairo_surface_t* GetIcon(uint32_t& uid, const std::string& name, int size);
 
     void StartUpdate();
@@ -43,5 +46,6 @@ private:
 
     Mode* m_proxyMode = nullptr;
     Mode* m_combiMode = nullptr;
+    PreprocessInputCallback m_combiOriginPreprocessInput = nullptr;
     std::shared_ptr<Logger> m_logger;
 };

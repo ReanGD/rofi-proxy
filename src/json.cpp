@@ -106,6 +106,26 @@ Token* Json::Next(TokenType expectedType) {
     return token;
 }
 
+[[maybe_unused]] Token* Json::NextOrNull(TokenType expectedType, bool& isValue) {
+    Token* token = Next();
+
+    if (token == nullptr) {
+        throw ProxyError("unexpected token type");
+    }
+
+    if ((token->type == TokenType::Primitive) && (token->AsString() == "null")) {
+        isValue = false;
+        return token;
+    }
+
+    if (token->type == expectedType) {
+        isValue = true;
+        return token;
+    }
+
+    throw ProxyError("unexpected token type");
+}
+
 void Json::NextNull() {
     auto text = Next(TokenType::Primitive)->AsString();
     if (text != "null") {

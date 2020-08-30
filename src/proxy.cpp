@@ -1,8 +1,6 @@
 #include "proxy.h"
 
-#include <rofi/mode.h>
 #include <rofi/helper.h>
-#include <rofi/mode-private.h>
 
 #include "rofi.h"
 #include "logger.h"
@@ -43,8 +41,7 @@ void Proxy::Init(Mode* proxyMode) {
     }
     m_logger->Debug("Init plugin start");
 
-    m_proxyMode = proxyMode;
-    m_rofi->SetProxyMode(m_proxyMode);
+    m_rofi->SetProxyMode(proxyMode);
     g_idle_add(OnPostInitHandler, this);
 
     m_logger->Debug("Init plugin finished");
@@ -53,12 +50,7 @@ void Proxy::Init(Mode* proxyMode) {
 void Proxy::OnPostInit() {
     m_logger->Debug("PostInit plugin start");
 
-    m_combiMode = m_rofi->ReadCombiMode();
-    if (m_combiMode != nullptr) {
-        m_logger->Debug("Proxy runs under combi plugin");
-        m_combiOriginPreprocessInput = m_combiMode->_preprocess_input;
-        m_combiMode->_preprocess_input = m_proxyMode->_preprocess_input;
-    }
+    m_rofi->OnPostInit();
 
     m_state = State::Running;
 
@@ -89,14 +81,14 @@ void Proxy::Destroy() {
 }
 
 size_t Proxy::GetLinesCount() const {
-    size_t result = m_request.lines.size();
+    size_t result = m_lines.size();
     m_logger->Debug("GetLinesCount = %zu", result);
     return result;
 }
 
 const char* Proxy::GetLine(size_t index, int* state) {
     // m_logger->Debug("GetLine(%zu)", index);
-    if (index >= m_request.lines.size()) {
+    if (index >= m_lines.size()) {
         return nullptr;
     }
 
@@ -107,10 +99,10 @@ const char* Proxy::GetLine(size_t index, int* state) {
         }
     }
 
-    if (m_request.lines[index].markup) {
+    if (m_lines[index].markup) {
         *state |= MARKUP;
     }
-    return m_request.lines[index].text.c_str();
+    return m_lines[index].text.c_str();
 }
 
 const char* Proxy::GetHelpMessage() const {
@@ -124,17 +116,17 @@ const char* Proxy::GetHelpMessage() const {
 }
 
 cairo_surface_t* Proxy::GetIcon(size_t index, int height) {
-    m_logger->Debug("GetIcon(%zu, %d)", index, height);
-    if (index >= m_request.lines.size()) {
+    // m_logger->Debug("GetIcon(%zu, %d)", index, height);
+    if (index >= m_lines.size()) {
         return nullptr;
     }
 
-    const std::string& name = m_request.lines[index].icon;
+    const std::string& name = m_lines[index].icon;
     if (name.empty()) {
         return nullptr;
     }
 
-    return m_rofi->GetIcon(m_request.lines[index].iconUID, name, height);
+    return m_rofi->GetIcon(m_lines[index].iconUID, name, height);
 }
 
 bool Proxy::OnCancel() {
@@ -157,12 +149,12 @@ bool Proxy::OnCancel() {
 
 void Proxy::OnSelectLine(size_t index) {
     m_logger->Debug("OnSelectLine(%zu)", index);
-    if (index >= m_request.lines.size()) {
+    if (index >= m_lines.size()) {
         return;
     }
 
     try {
-        std::string msg = m_protocol->CreateMessageSelectLine(m_request.lines[index]);
+        std::string msg = m_protocol->CreateMessageSelectLine(m_lines[index]);
         m_process->Write(msg.c_str());
         m_logger->Debug("Send message with name \"select_line\" to child process: %s", msg.c_str());
     } catch(const std::exception& e) {
@@ -176,8 +168,8 @@ void Proxy::OnCustomKey(size_t index, int key) {
     try {
         auto keyName = "custom_" + std::to_string(key);
         Line line;
-        if (index < m_request.lines.size()) {
-            line = m_request.lines[index];
+        if (index < m_lines.size()) {
+            line = m_lines[index];
         }
 
         std::string msg = m_protocol->CreateMessageKeyPress(line, keyName.c_str());
@@ -203,56 +195,56 @@ const char* Proxy::OnInput(Mode* sw, const char* text) {
         OnSendRequestError(e.what());
     }
 
-    if ((text != nullptr) && (sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
-        return m_combiOriginPreprocessInput(sw, text);
-    }
-
-    return text;
+    return m_rofi->CallOriginPreprocessInput(sw, text);
 }
 
 bool Proxy::OnTokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
     // m_logger->Debug("OnTokenMatch(%zu)", index);
-    if (index >= m_request.lines.size()) {
+    if (index >= m_lines.size()) {
         return false;
     }
 
-    if (!m_request.lines[index].filtering) {
+    if (!m_lines[index].filtering) {
         return true;
     }
 
-    return (helper_token_match(tokens, m_request.lines[index].text.c_str()) == TRUE);
+    return (helper_token_match(tokens, m_lines[index].text.c_str()) == TRUE);
 }
 
 void Proxy::OnReadLine(const char* text) {
     m_logger->Debug("Get request from child process: %s", text);
 
     try {
-        m_request = m_protocol->ParseRequest(text);
+        auto request = m_protocol->ParseRequest(text);
 
         m_rofi->StartUpdate();
 
-        if (m_request.updateHelp) {
-            m_help = m_request.help;
+        if (request.updateLines) {
+            m_lines = request.lines;
         }
 
-        if (m_request.updateExitByCancel) {
-            m_exitByCancel = m_request.exitByCancel;
+        if (request.updateHelp) {
+            m_help = request.help;
         }
 
-        if (m_request.updateInput) {
-            m_rofi->UpdateUserInput(m_request.input);
+        if (request.updateExitByCancel) {
+            m_exitByCancel = request.exitByCancel;
         }
 
-        if (m_request.updateOverlay) {
-            m_rofi->UpdateOverlay(m_request.overlay);
+        if (request.updateInput) {
+            m_rofi->UpdateUserInput(request.input);
         }
 
-        if (m_request.updatePrompt) {
-            m_rofi->UpdatePrompt(m_request.prompt);
+        if (request.updateOverlay) {
+            m_rofi->UpdateOverlay(request.overlay);
         }
 
-        if (m_request.updateHideCombiLines) {
-            m_rofi->UpdateHideCombiLines(m_request.hideCombiLines);
+        if (request.updatePrompt) {
+            m_rofi->UpdatePrompt(request.prompt);
+        }
+
+        if (request.updateHideCombiLines) {
+            m_rofi->UpdateHideCombiLines(request.hideCombiLines);
         }
 
         m_rofi->ApplyUpdate();

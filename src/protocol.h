@@ -30,6 +30,7 @@ struct UserRequest {
     bool exitByCancel = true;
     bool updateExitByCancel = false;
     std::vector<Line> lines;
+    bool updateLines = false;
 };
 
 class Protocol {

@@ -37,7 +37,7 @@ void Rofi::SetProxyMode(Mode* mode) {
     m_proxyMode = mode;
 }
 
-Mode* Rofi::ReadCombiMode() {
+void Rofi::OnPostInit() {
     RofiViewState* viewState = rofi_view_get_active();
     if (viewState == nullptr) {
         throw ProxyError("rofi view state is null");
@@ -49,12 +49,13 @@ Mode* Rofi::ReadCombiMode() {
     }
 
     if (std::string(currentMode->name) == "combi") {
+        m_logger->Debug("Proxy runs under combi plugin");
         m_combiMode = currentMode;
+        m_combiOriginPreprocessInput = m_combiMode->_preprocess_input;
+        m_combiMode->_preprocess_input = m_proxyMode->_preprocess_input;
     } else {
         m_combiMode = nullptr;
     }
-
-    return m_combiMode;
 }
 
 const char* Rofi::GetActualUserInput() noexcept {
@@ -63,6 +64,14 @@ const char* Rofi::GetActualUserInput() noexcept {
     }
 
     return nullptr;
+}
+
+const char* Rofi::CallOriginPreprocessInput(Mode* sw, const char* text) {
+    if ((text != nullptr) && (sw == m_combiMode) && (m_combiOriginPreprocessInput != nullptr)) {
+        return m_combiOriginPreprocessInput(sw, text);
+    }
+
+    return text;
 }
 
 cairo_surface_t* Rofi::GetIcon(uint32_t& uid, const std::string& name, int size) {

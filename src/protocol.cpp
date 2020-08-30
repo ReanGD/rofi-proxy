@@ -46,7 +46,10 @@ UserRequest Protocol::ParseRequest(const char* text) {
         } else if (key == "exit_by_cancel") {
             result.exitByCancel = m_json.NextBoolOrNull(result.updateExitByCancel);
         } else if (key == "lines") {
-            ParseLines(m_json.Next(TokenType::Array)->size, result.lines);
+            auto itemCount = m_json.NextOrNull(TokenType::Array, result.updateLines)->size;
+            if (result.updateLines) {
+                ParseLines(itemCount, result.lines);
+            }
         } else {
             throw ProxyError("unexpected key \"%s\" in root dict", std::string(key).c_str());
         }

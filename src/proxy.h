@@ -10,9 +10,7 @@
 class Rofi;
 struct rofi_int_matcher_t;
 typedef struct rofi_mode Mode;
-typedef struct RofiViewState RofiViewState;
 typedef struct _cairo_surface cairo_surface_t;
-typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
 class Proxy : public ProcessHandler {
     enum class State {
         Starting,
@@ -51,17 +49,10 @@ private:
     void Clear();
 
 private:
-    // user state
     std::string m_help;
     bool m_exitByCancel = true;
-    UserRequest m_request;
+    std::vector<Line> m_lines;
 
-    // modes state
-    Mode* m_proxyMode = nullptr;
-    Mode* m_combiMode = nullptr;
-    PreprocessInputCallback m_combiOriginPreprocessInput = nullptr;
-
-    // proxy state
     State m_state = State::Starting;
     std::shared_ptr<Logger> m_logger;
     std::unique_ptr<Rofi> m_rofi;

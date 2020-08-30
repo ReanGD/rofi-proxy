@@ -28,6 +28,7 @@ public:
     void Parse(const char* text);
     [[maybe_unused]] Token* Next();
     [[maybe_unused]] Token* Next(TokenType expectedType);
+    [[maybe_unused]] Token* NextOrNull(TokenType expectedType, bool& isValue);
     void NextNull();
     std::string_view NextString();
     std::string_view NextStringOrNull(bool& isString);
