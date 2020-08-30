@@ -59,9 +59,11 @@ static int ProxyInit(Mode* sw) {
 static void ProxyDestroy(Mode* sw) {
     try {
         auto* proxy = GetProxy(sw);
-        mode_set_private_data(sw, nullptr);
-        proxy->Destroy();
-        delete proxy;
+        if (proxy != nullptr) {
+            mode_set_private_data(sw, nullptr);
+            proxy->Destroy();
+            delete proxy;
+        }
     } catch(const std::exception& e) {
         logException("ProxyDestroy", e);
     }
