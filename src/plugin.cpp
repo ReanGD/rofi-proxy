@@ -41,10 +41,6 @@ static Proxy* GetProxy(Mode* sw) {
     return reinterpret_cast<Proxy *>(mode_get_private_data(sw));
 }
 
-static const Proxy* GetProxy(const Mode* sw) {
-    return reinterpret_cast<const Proxy *>(mode_get_private_data(sw));
-}
-
 static void logException(const char* func, const std::exception& e) {
     fprintf(stderr, "%s: finished with error: %s\n", func, e.what());
     fflush(stderr);
@@ -63,24 +59,24 @@ static int ProxyInit(Mode* sw) {
 static void ProxyDestroy(Mode* sw) {
     try {
         auto* proxy = GetProxy(sw);
+        mode_set_private_data(sw, nullptr);
         proxy->Destroy();
         delete proxy;
-        mode_set_private_data(sw, nullptr);
     } catch(const std::exception& e) {
         logException("ProxyDestroy", e);
     }
 }
 
-static unsigned int ProxyGetNumEntries(const Mode* sw) {
+static unsigned int ProxyGetNumEntries(const Mode*) {
     try {
-        return static_cast<unsigned int>(GetProxy(sw)->GetLinesCount());
+        return static_cast<unsigned int>(GetProxy(&mode)->GetLinesCount());
     } catch(const std::exception& e) {
         logException("ProxyGetNumEntries", e);
         return 0;
     }
 }
 
-static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLine) {
+static ModeMode ProxyResult(Mode*, int mretv, char**, unsigned int selectedLine) {
     if (mretv & MENU_NEXT) {
         return NEXT_DIALOG;
     }
@@ -91,7 +87,7 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
 
     if (mretv & MENU_OK) {
         try {
-            GetProxy(sw)->OnSelectLine(selectedLine);
+            GetProxy(&mode)->OnSelectLine(selectedLine);
         } catch(const std::exception& e) {
             logException("ProxyResult (MENU_OK)", e);
         }
@@ -100,7 +96,7 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
 
     if (mretv & MENU_CANCEL) {
         try {
-            if (bool exit = GetProxy(sw)->OnCancel(); !exit) {
+            if (bool exit = GetProxy(&mode)->OnCancel(); !exit) {
                 return RELOAD_DIALOG;
             }
         } catch(const std::exception& e) {
@@ -111,7 +107,7 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
 
     if (mretv & MENU_QUICK_SWITCH) {
         try {
-            GetProxy(sw)->OnCustomKey(selectedLine, ((mretv & MENU_LOWER_MASK) % 20) + 1);
+            GetProxy(&mode)->OnCustomKey(selectedLine, ((mretv & MENU_LOWER_MASK) % 20) + 1);
         } catch(const std::exception& e) {
             logException("ProxyResult (MENU_QUICK_SWITCH)", e);
         }
@@ -127,9 +123,9 @@ static ModeMode ProxyResult(Mode* sw, int mretv, char**, unsigned int selectedLi
     return MODE_EXIT;
 }
 
-static int ProxyTokenMatch(const Mode* sw, rofi_int_matcher** tokens, unsigned int index) {
+static int ProxyTokenMatch(const Mode*, rofi_int_matcher** tokens, unsigned int index) {
     try {
-        return GetProxy(sw)->OnTokenMatch(tokens, index) ? TRUE : FALSE;
+        return GetProxy(&mode)->OnLineMatch(tokens, index) ? TRUE : FALSE;
     } catch(const std::exception& e) {
         logException("ProxyTokenMatch", e);
         return FALSE;
@@ -155,7 +151,7 @@ static cairo_surface_t* GetIcon(const Mode*, unsigned int selectedLine, int heig
     }
 }
 
-static char* ProxyPreprocessInput(Mode *sw, const char *input) {
+static char* ProxyPreprocessInput(Mode* sw, const char *input) {
     try {
         return g_strdup(GetProxy(&mode)->OnInput(sw, input));
     } catch(const std::exception& e) {
@@ -164,9 +160,9 @@ static char* ProxyPreprocessInput(Mode *sw, const char *input) {
     }
 }
 
-static char* ProxyGetHelpMessage(const Mode *sw) {
+static char* ProxyGetHelpMessage(const Mode*) {
     try {
-        const char* text = GetProxy(sw)->GetHelpMessage();
+        const char* text = GetProxy(&mode)->GetHelpMessage();
         return text == nullptr ? nullptr : g_strdup(text);
     } catch(const std::exception& e) {
         logException("ProxyGetHelpMessage", e);

@@ -198,8 +198,8 @@ const char* Proxy::OnInput(Mode* sw, const char* text) {
     return m_rofi->CallOriginPreprocessInput(sw, text);
 }
 
-bool Proxy::OnTokenMatch(rofi_int_matcher_t** tokens, size_t index) const {
-    // m_logger->Debug("OnTokenMatch(%zu)", index);
+bool Proxy::OnLineMatch(rofi_int_matcher_t** tokens, size_t index) const {
+    m_logger->Debug("OnLineMatch(%zu)", index);
     if (index >= m_lines.size()) {
         return false;
     }

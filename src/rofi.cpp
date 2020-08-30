@@ -24,12 +24,35 @@ extern void rofi_view_clear_input(RofiViewState *state);
 extern void rofi_view_handle_text(RofiViewState *state, char *text);
 }
 
+namespace {
+
+static void CopyMode(const Mode* src, Mode* dst) {
+    dst->_get_num_entries = src->_get_num_entries;
+    dst->_result = src->_result;
+    dst->_token_match = src->_token_match;
+    dst->_get_display_value = src->_get_display_value;
+    dst->_get_icon = src->_get_icon;
+    dst->_get_completion = src->_get_completion;
+    // dst->_preprocess_input = src->_preprocess_input;
+    dst->_get_message = src->_get_message;
+}
+
+}
+
 Rofi::Rofi(const std::shared_ptr<Logger>& logger)
     : m_logger(logger) {
 
 }
 
 Rofi::~Rofi() {
+    if (m_combiMode != nullptr) {
+        CopyMode(m_combiModeOrigin, m_combiMode);
+        m_combiMode->_preprocess_input = m_combiOriginPreprocessInput;
+    }
+    if (m_combiModeOrigin != nullptr) {
+        delete m_combiModeOrigin;
+        m_combiModeOrigin = nullptr;
+    }
     m_logger.reset();
 }
 
@@ -53,8 +76,9 @@ void Rofi::OnPostInit() {
         m_combiMode = currentMode;
         m_combiOriginPreprocessInput = m_combiMode->_preprocess_input;
         m_combiMode->_preprocess_input = m_proxyMode->_preprocess_input;
-    } else {
-        m_combiMode = nullptr;
+
+        m_combiModeOrigin = new Mode();
+        CopyMode(m_combiMode, m_combiModeOrigin);
     }
 }
 
@@ -82,8 +106,7 @@ cairo_surface_t* Rofi::GetIcon(uint32_t& uid, const std::string& name, int size)
 }
 
 void Rofi::StartUpdate() {
-    m_updateMode = false;
-    m_updatePrompt = false;
+    m_reloadMode = false;
     m_viewState = rofi_view_get_active();
     if (m_viewState == nullptr) {
         throw ProxyError("rofi view state is null");
@@ -92,12 +115,11 @@ void Rofi::StartUpdate() {
     if (m_currentMode == nullptr) {
         throw ProxyError("rofi view mode is null");
     }
-    m_newMode = m_currentMode;
 }
 
 void Rofi::ApplyUpdate() {
-    if (m_updateMode || m_updatePrompt) {
-        rofi_view_switch_mode(m_viewState, m_newMode);
+    if (m_reloadMode) {
+        rofi_view_switch_mode(m_viewState, m_currentMode);
     } else {
         rofi_view_reload();
     }
@@ -105,7 +127,7 @@ void Rofi::ApplyUpdate() {
 
 void Rofi::UpdatePrompt(const std::string& text) {
     if (m_proxyMode->display_name != text) {
-        m_updatePrompt = true;
+        m_reloadMode = true;
         if (m_proxyMode->display_name != nullptr) {
             g_free(m_proxyMode->display_name);
         }
@@ -113,7 +135,7 @@ void Rofi::UpdatePrompt(const std::string& text) {
     }
 
     if ((m_combiMode != nullptr) && ((m_combiMode->display_name == nullptr) || (m_combiMode->display_name != text))) {
-        m_updatePrompt = true;
+        m_reloadMode = true;
         if (m_combiMode->display_name != nullptr) {
             g_free(m_combiMode->display_name);
         }
@@ -135,14 +157,11 @@ void Rofi::UpdateHideCombiLines(bool value) {
         return;
     }
 
-    if (m_currentMode == m_combiMode) {
-        m_updateMode = value;
-    } else if (m_currentMode == m_proxyMode) {
-        m_updateMode = !value;
-    }
-
-    if (m_updateMode) {
-        m_newMode = value ? m_proxyMode : m_combiMode;
+    m_reloadMode = true;
+    if (value) {
+        CopyMode(m_proxyMode, m_combiMode);
+    } else {
+        CopyMode(m_combiModeOrigin, m_combiMode);
     }
 }
 

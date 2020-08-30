@@ -7,7 +7,7 @@
 typedef struct rofi_mode Mode;
 typedef struct RofiViewState RofiViewState;
 typedef struct _cairo_surface cairo_surface_t;
-typedef char* (*PreprocessInputCallback)(Mode *sw, const char *input);
+typedef char* (*PreprocessInputCallback)(Mode* sw, const char* input);
 class Logger;
 class Rofi {
 public:
@@ -38,14 +38,13 @@ private:
     std::string m_input;
     std::string m_overlay;
 
-    bool m_updateMode = false;
-    bool m_updatePrompt = false;
+    bool m_reloadMode = false;
     RofiViewState* m_viewState = nullptr;
     Mode* m_currentMode = nullptr;
-    Mode* m_newMode = nullptr;
 
     Mode* m_proxyMode = nullptr;
     Mode* m_combiMode = nullptr;
+    Mode* m_combiModeOrigin = nullptr;
     PreprocessInputCallback m_combiOriginPreprocessInput = nullptr;
     std::shared_ptr<Logger> m_logger;
 };
