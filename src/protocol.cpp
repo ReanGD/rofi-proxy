@@ -82,6 +82,16 @@ Line Protocol::ParseLine(uint32_t keyCount) {
             if (isValue) {
                 result.filtering = value;
             }
+        } else if (key == "urgent") {
+            bool value = m_json.NextBoolOrNull(isValue);
+            if (isValue) {
+                result.urgent = value;
+            }
+        } else if (key == "active") {
+            bool value = m_json.NextBoolOrNull(isValue);
+            if (isValue) {
+                result.active = value;
+            }
         } else if (key == "markup") {
             bool value = m_json.NextBoolOrNull(isValue);
             if (isValue) {

@@ -99,7 +99,11 @@ const char* Proxy::GetLine(size_t index, int* state) {
         }
     }
 
-    if (m_lines[index].markup) {
+    if (m_lines[index].urgent) {
+        *state |= URGENT;
+    } else if (m_lines[index].active) {
+        *state |= ACTIVE;
+    } else if (m_lines[index].markup) {
         *state |= MARKUP;
     }
     return m_lines[index].text.c_str();

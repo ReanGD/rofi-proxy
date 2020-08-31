@@ -8,6 +8,8 @@
 
 struct Line {
     bool filtering = true;
+    bool urgent = false;
+    bool active = false;
     bool markup = false;
     std::string id;
     std::string text;
