@@ -54,6 +54,19 @@
             ]
         },
         {
+            "label": "Run lines example",
+            "type": "shell",
+            "group": "build",
+            "command": "./example/lines.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "Run custom keys example",
             "type": "shell",
             "group": "build",
