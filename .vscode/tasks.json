@@ -67,6 +67,19 @@
             ]
         },
         {
+            "label": "Run TODO example",
+            "type": "shell",
+            "group": "build",
+            "command": "./example/todo.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "Run custom keys example",
             "type": "shell",
             "group": "build",

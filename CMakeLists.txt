@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(rofi_proxy VERSION 0.4 LANGUAGES CXX)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
-endif()
-
 find_package(PkgConfig)
 pkg_search_module(CAIRO REQUIRED cairo)
 pkg_search_module(GLIB2 REQUIRED glib-2.0)
