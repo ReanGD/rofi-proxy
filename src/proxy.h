@@ -35,6 +35,7 @@ public:
 
     bool OnCancel();
     void OnSelectLine(size_t index);
+    void OnDeleteLine(size_t index);
     void OnCustomKey(size_t index, int key);
     const char* OnInput(Mode* sw, const char* text);
     bool OnLineMatch(rofi_int_matcher_t** tokens, size_t index) const;
@@ -45,7 +46,7 @@ public:
     void OnProcessExit(int pid, bool normally) override;
 
 private:
-    void OnSendRequestError(const char* err);
+    void SendMessage(const char* messageName, const std::string& messageText);
     void Clear();
 
 private:

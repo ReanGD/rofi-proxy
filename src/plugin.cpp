@@ -96,6 +96,15 @@ static ModeMode ProxyResult(Mode*, int mretv, char**, unsigned int selectedLine)
         return RELOAD_DIALOG;
     }
 
+    if (mretv & MENU_ENTRY_DELETE) {
+        try {
+            GetProxy(&mode)->OnDeleteLine(selectedLine);
+        } catch(const std::exception& e) {
+            logException("ProxyResult (MENU_ENTRY_DELETE)", e);
+        }
+        return RELOAD_DIALOG;
+    }
+
     if (mretv & MENU_CANCEL) {
         try {
             if (bool exit = GetProxy(&mode)->OnCancel(); !exit) {
@@ -118,9 +127,6 @@ static ModeMode ProxyResult(Mode*, int mretv, char**, unsigned int selectedLine)
 
     // MENU_CUSTOM_INPUT
     // MENU_CUSTOM_ACTION
-    if (mretv & MENU_ENTRY_DELETE) {
-        return RELOAD_DIALOG;
-    }
 
     return MODE_EXIT;
 }

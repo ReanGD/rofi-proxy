@@ -139,13 +139,7 @@ bool Proxy::OnCancel() {
         return true;
     }
 
-    try {
-        std::string msg = m_protocol->CreateMessageKeyPress(Line(), "cancel");
-        m_process->Write(msg.c_str());
-        m_logger->Debug("Send message with name \"key_press\" to child process: %s", msg.c_str());
-    } catch(const std::exception& e) {
-        OnSendRequestError(e.what());
-    }
+    SendMessage("key_press", m_protocol->CreateMessageKeyPress(Line(), "cancel"));
 
     m_logger->Debug("OnCancel = false (not exit)");
     return false;
@@ -157,31 +151,27 @@ void Proxy::OnSelectLine(size_t index) {
         return;
     }
 
-    try {
-        std::string msg = m_protocol->CreateMessageSelectLine(m_lines[index]);
-        m_process->Write(msg.c_str());
-        m_logger->Debug("Send message with name \"select_line\" to child process: %s", msg.c_str());
-    } catch(const std::exception& e) {
-        OnSendRequestError(e.what());
+    SendMessage("select_line", m_protocol->CreateMessageSelectLine(m_lines[index]));
+}
+
+void Proxy::OnDeleteLine(size_t index) {
+    m_logger->Debug("OnDeleteLine(%zu)", index);
+    if (index >= m_lines.size()) {
+        return;
     }
+
+    SendMessage("delete_line", m_protocol->CreateMessageDeleteLine(m_lines[index]));
 }
 
 void Proxy::OnCustomKey(size_t index, int key) {
     m_logger->Debug("OnCustomKey(line = %zu, key = %d)", index, key);
 
-    try {
-        auto keyName = "custom_" + std::to_string(key);
-        Line line;
-        if (index < m_lines.size()) {
-            line = m_lines[index];
-        }
-
-        std::string msg = m_protocol->CreateMessageKeyPress(line, keyName.c_str());
-        m_process->Write(msg.c_str());
-        m_logger->Debug("Send message with name \"key_press\" to child process: %s", msg.c_str());
-    } catch(const std::exception& e) {
-        OnSendRequestError(e.what());
+    auto keyName = "custom_" + std::to_string(key);
+    Line line;
+    if (index < m_lines.size()) {
+        line = m_lines[index];
     }
+    SendMessage("key_press", m_protocol->CreateMessageKeyPress(line, keyName.c_str()));
 }
 
 const char* Proxy::OnInput(Mode* sw, const char* text) {
@@ -190,14 +180,8 @@ const char* Proxy::OnInput(Mode* sw, const char* text) {
     }
     m_logger->Debug("OnInput(\"%s\")", text);
 
-    try {
-        m_rofi->SetCachedUserInput(text);
-        std::string msg = m_protocol->CreateMessageInput(text);
-        m_process->Write(msg.c_str());
-        m_logger->Debug("Send message with name \"input\" to child process: %s", msg.c_str());
-    } catch(const std::exception& e) {
-        OnSendRequestError(e.what());
-    }
+    m_rofi->SetCachedUserInput(text);
+    SendMessage("input", m_protocol->CreateMessageInput(text));
 
     return m_rofi->CallOriginPreprocessInput(sw, text);
 }
@@ -293,10 +277,15 @@ void Proxy::OnProcessExit(int pid, bool normally) {
     }
 }
 
-void Proxy::OnSendRequestError(const char* err) {
-    m_logger->Error("Error while send message to child process: %s", err);
-    m_state = State::ErrorProcess;
-    m_process->Kill();
+void Proxy::SendMessage(const char* messageName, const std::string& messageText) {
+    try {
+        m_process->Write(messageText.c_str());
+        m_logger->Debug("Send message with name \"%s\" to child process: %s", messageName, messageText.c_str());
+    } catch(const std::exception& e) {
+        m_logger->Error("Error while send message to child process: %s", e.what());
+        m_state = State::ErrorProcess;
+        m_process->Kill();
+    }
 }
 
 void Proxy::Clear() {
