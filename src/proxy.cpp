@@ -163,6 +163,12 @@ void Proxy::OnDeleteLine(size_t index) {
     SendMessage("delete_line", m_protocol->CreateMessageDeleteLine(m_lines[index]));
 }
 
+void Proxy::OnSelectCustomInput(const char* text) {
+    m_logger->Debug("OnSelectCustomInput(%s)", text);
+
+    SendMessage("select_custom_input", m_protocol->CreateMessageSelectCustomInput(text));
+}
+
 void Proxy::OnCustomKey(size_t index, int key) {
     m_logger->Debug("OnCustomKey(line = %zu, key = %d)", index, key);
 

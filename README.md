@@ -37,7 +37,16 @@ After starting the plugin, it launches the `application` specified in "-proxy-cm
 }
 ```
 
-- When you select a line (press enter), the plugin will send a "select_line" message with the data for this line, for example:
+- When custom (non-matched) input was entered, the plugin sends a message named "select_custom_input", for example:
+
+```json
+{
+    "name": "select_custom_input",
+    "value": "input_string"
+}
+```
+
+- When you select a line (press Enter), the plugin will send a "select_line" message with the data for this line, for example:
 
 ```json
 {

@@ -78,7 +78,7 @@ static unsigned int ProxyGetNumEntries(const Mode*) {
     }
 }
 
-static ModeMode ProxyResult(Mode*, int mretv, char**, unsigned int selectedLine) {
+static ModeMode ProxyResult(Mode*, int mretv, char** input, unsigned int selectedLine) {
     if (mretv & MENU_NEXT) {
         return NEXT_DIALOG;
     }
@@ -105,6 +105,15 @@ static ModeMode ProxyResult(Mode*, int mretv, char**, unsigned int selectedLine)
         return RELOAD_DIALOG;
     }
 
+    if (mretv & MENU_CUSTOM_INPUT) {
+        try {
+            GetProxy(&mode)->OnSelectCustomInput(*input);
+        } catch(const std::exception& e) {
+            logException("ProxyResult (MENU_CUSTOM_INPUT)", e);
+        }
+        return RELOAD_DIALOG;
+    }
+
     if (mretv & MENU_CANCEL) {
         try {
             if (bool exit = GetProxy(&mode)->OnCancel(); !exit) {
@@ -125,7 +134,6 @@ static ModeMode ProxyResult(Mode*, int mretv, char**, unsigned int selectedLine)
         return static_cast<ModeMode>(mretv & MENU_LOWER_MASK);
     }
 
-    // MENU_CUSTOM_INPUT
     // MENU_CUSTOM_ACTION
 
     return MODE_EXIT;

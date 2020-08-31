@@ -25,6 +25,12 @@ std::string Protocol::CreateMessageDeleteLine(const Line& line) {
         m_json.EscapeString(line.group.c_str()).c_str());
 }
 
+std::string Protocol::CreateMessageSelectCustomInput(const char* text) {
+    return detail::Format(
+        "{\"name\": \"select_custom_input\", \"value\": \"%s\"}",
+        m_json.EscapeString(text).c_str());
+}
+
 std::string Protocol::CreateMessageKeyPress(const Line& line, const char* keyName) {
     return detail::Format(
         "{\"name\": \"key_press\", \"value\": {\"key\": \"%s\", \"line\": {\"id\": \"%s\", \"text\": \"%s\", \"group\": \"%s\"}}}",
