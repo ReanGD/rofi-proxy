@@ -1,8 +1,8 @@
 # rofi-proxy
 
-`Rofi-proxy` is a [rofi](https://github.com/davatorium/rofi) plugin that allows you to manage rofi state with an external application.
+`Rofi-proxy` is a plugin that allows you to manage [rofi](https://github.com/davatorium/rofi) state with an external application.
 
-Running rofi with the plugin:
+To run rofi with plugin:
 
 ```bash
 rofi -modi proxy -show proxy -proxy-cmd "path_to_app"
@@ -22,13 +22,13 @@ rofi -modi proxy -show proxy -proxy-log -proxy-cmd "path_to_app"
 
 ## Communication protocol
 
-Examples of using the protocol [here](https://github.com/ReanGD/rofi-proxy/tree/master/example).
+[Usage examples](https://github.com/ReanGD/rofi-proxy/tree/master/example).
 
-After starting the plugin, it launches the `application` specified in "-proxy-cmd". And it sends json messages to its stdin when rofi state changes. The `application` can send (at any time) messages describing the desired state of rofi in json format to its stdout. All messages must be in single-line json format and end with "\n".
+After start it launches the `application` specified in "-proxy-cmd". The `application` can send to stdout messages which describes desired state of rofi in json format at any time. All messages must be in single-line json format and end with new line symbol.
 
 ### Messages from `rofi-proxy` to `application`
 
-- Each time the input line changes, the plugin sends a message named "input", for example:
+- Plugin sends an "input" message each time input line changes. For example:
 
 ```json
 {
@@ -37,7 +37,7 @@ After starting the plugin, it launches the `application` specified in "-proxy-cm
 }
 ```
 
-- When custom (non-matched) input was entered, the plugin sends a message named "select_custom_input", for example:
+- When custom (non-matched) input was entered, the plugin sends a message named "select_custom_input". For example:
 
 ```json
 {
@@ -46,7 +46,7 @@ After starting the plugin, it launches the `application` specified in "-proxy-cm
 }
 ```
 
-- When you select a line (press Enter), the plugin will send a "select_line" message with the data for this line, for example:
+- When you select a line (press Enter), the plugin will send a "select_line" message with the data for this line. For example:
 
 ```json
 {
@@ -59,7 +59,7 @@ After starting the plugin, it launches the `application` specified in "-proxy-cm
 }
 ```
 
-- When you delete a line (press Shift+Delete by default), the plugin will send a "delete_line" message with the data for this line, for example:
+- When you delete a line (press Shift+Delete by default), the plugin will send a "delete_line" message with the data for this line. For example:
 
 ```json
 {
@@ -72,7 +72,7 @@ After starting the plugin, it launches the `application` specified in "-proxy-cm
 }
 ```
 
-- When the hotkey is pressed (see the rofi documentation for options "-kb-custom-1" ... "-kb-custom-19"), the plugin sends a "key_press" message with the code "custom_1" .. "custom_19" (if interception for pressing `Escape` is allowed  then rofi will not close, but will send a message about the pressed key with the code" cancel "). Also in the value of the "line" field, the data of the currently displayed line will be sent, for example:
+- When the hotkey is pressed (see the rofi documentation for options "-kb-custom-1" ... "-kb-custom-19"), the plugin sends a "key_press" message with the code "custom_1" .. "custom_19" (if interception for pressing `Escape` is allowed  then rofi will not close, but will send a message about the pressed key with the code" cancel "). Currently displayed line will be sent in the value of the "line" field. For example:
 
 ```json
 {
@@ -124,17 +124,17 @@ All fields in the root json are optional. Here is a description of the fields in
 | input            | string | ""          | Sets user input text. If null or not set, `user input` remains the same. |
 | overlay          | string | ""          | Sets overlay text. If null or not set, `overlay` remains the same.       |
 | help             | string | ""          | Sets help text. If null or not set, `help` remains the same.             |
-| hide_combi_lines | bool   | false       | If the value is true, then in combi mode, all lines are hidden except those described in `lines`.</br>If null or not set, `hide_combi_lines` remains the same. |
-| exit_by_cancel   | bool   | true        | If the value is false, then when you press Escape, rofi does not exit, but sends the "key_press" message with the "cancel" key.</br>If null or not set, `exit_by_cancel` remains the same. |
+| hide_combi_lines | bool   | false       | If the value is true, then in combi mode, all lines are hidden except those which were described in `lines`.</br>If null or not set, `hide_combi_lines` remains the same. |
+| exit_by_cancel   | bool   | true        | If the value is false and you pressing Escape key, rofi does not exit, but sends the "key_press" message with the "cancel" key.</br>If null or not set, `exit_by_cancel` remains the same. |
 | lines            | array  | []          | An array for the contents of the rofi list, see description below.</br>If null or not set, `lines` remains the same. |
 
 Description of fields in array `lines`:
 
 | Name      | Type   | Default  | Description                                                                                                                 |
 |-----------|--------|----------|-----------------------------------------------------------------------------------------------------------------------------|
-| id        | string | ""       | Sent as is in `select_line`, `delete_line` or `key_press messages`.                                                         |
+| id        | string | ""       | Sent as it is in `select_line`, `delete_line` or `key_press messages`.                                                         |
 | text      | string | required | Text displayed in line.                                                                                                     |
-| group     | string | ""       | Sent as is in `select_line`, `delete_line`  or `key_press messages`.                                                        |
+| group     | string | ""       | Sent as is it in `select_line`, `delete_line`  or `key_press messages`.                                                        |
 | icon      | string | none     | Icon name or full path to it (to use it, you need to run rofi with the "-show-icons" flag).                                 |
 | filtering | bool   | true     | If the value is false, then this line is always displayed, regardless of filtering.                                         |
 | urgent    | bool   | false    | Mark line as urgent.                                                                                                        |
