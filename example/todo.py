@@ -23,5 +23,3 @@ for line in sys.stdin:
     elif j["name"] == "delete_line":
         lines.remove(j["value"]["text"])
         send_lines()
-    else:
-        continue

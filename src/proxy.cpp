@@ -7,10 +7,10 @@
 #include "exception.h"
 
 
-static const int NORMAL = 0;
+// static const int NORMAL = 0;
 static const int URGENT = 1;
 static const int ACTIVE = 2;
-static const int SELECTED = 4;
+// static const int SELECTED = 4;
 static const int MARKUP = 8;
 
 namespace {
