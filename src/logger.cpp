@@ -28,9 +28,9 @@ Logger::~Logger() {
 
 void Logger::EnableFileLogging() {
     std::string XDGDataHome;
-    if(const char* envValue = std::getenv("XDG_DATA_HOME"); envValue != nullptr) {
+    if (const char* envValue = std::getenv("XDG_DATA_HOME"); envValue != nullptr) {
         XDGDataHome = envValue;
-    } else if(const char* envValue = std::getenv("HOME"); envValue != nullptr) {
+    } else if (const char* envValue = std::getenv("HOME"); envValue != nullptr) {
         XDGDataHome = envValue + std::string("/.local/share");
     } else {
         throw ProxyError("not found env varaibles: XDG_DATA_HOME or HOME");

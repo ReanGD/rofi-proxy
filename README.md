@@ -143,6 +143,13 @@ Description of fields in array `lines`:
 
 ## Compiling and installing from source
 
+Next buildtime dependencies must be installed:
+
+- git
+- cmake
+- gcc/clang - compiler with c++17 support
+- rofi - required headers only, configuration searched with pkgconfig
+
 ```bash
 git clone https://github.com/ReanGD/rofi-proxy.git
 cd rofi-proxy

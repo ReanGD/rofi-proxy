@@ -16,6 +16,13 @@ static cairo_surface_t* GetIcon(const Mode* sw, unsigned int selectedLine, int h
 static char* ProxyPreprocessInput(Mode* sw, const char* input);
 static char* ProxyGetHelpMessage(const Mode *sw);
 
+#pragma GCC diagnostic push
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wc++20-designator"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 Mode mode = {
     .abi_version        = ABI_VERSION,
     .name               = g_strdup("proxy"),
@@ -36,6 +43,8 @@ Mode mode = {
     .ed                 = nullptr,
     .module             = nullptr,
 };
+
+#pragma GCC diagnostic pop
 
 static Proxy* GetProxy(Mode* sw) {
     return reinterpret_cast<Proxy *>(mode_get_private_data(sw));

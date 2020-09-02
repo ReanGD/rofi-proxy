@@ -54,7 +54,7 @@ static char* toUtf8(const char* data, char* writeIt) {
 }
 
 std::string_view Token::AsString() {
-    return std::string_view(start, end);
+    return std::string_view(start, static_cast<size_t>(end - start));
 }
 
 Json::Json()
