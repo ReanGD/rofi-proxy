@@ -141,6 +141,14 @@ Description of fields in array `lines`:
 | active    | bool   | false    | Mark line as active.                                                                                                        |
 | markup    | bool   | false    | Allow the [pango markup language](https://developer.gnome.org/pygtk/stable/pango-markup-language.html) in the `text` field. |
 
+## Installation for Arch linux\Manjaro users
+
+You can install the package [rofi-proxy](https://aur.archlinux.org/packages/rofi-proxy/) from AUR:
+
+```bash
+yay -S rofi-proxy
+```
+
 ## Compiling and installing from source
 
 Next buildtime dependencies must be installed:
