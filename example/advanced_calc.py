@@ -27,7 +27,7 @@ def on_input(text: str):
 
 def on_select_line(text: str):
     subprocess.run(["xclip", "-selection", "c"], input=text, encoding="utf-8", check=True)
-    exit(0)
+    sys.exit(0)
 
 
 sys.stdout.write(json.dumps({"overlay": "calc"}) + "\n")

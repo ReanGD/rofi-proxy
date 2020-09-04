@@ -54,7 +54,7 @@ After start it launches the `application` specified in "-proxy-cmd". The `applic
     "value": {
         "id": "id_string",
         "text": "line_text",
-        "group": "droup_string"
+        "group": "group_string"
     }
 }
 ```
@@ -67,7 +67,7 @@ After start it launches the `application` specified in "-proxy-cmd". The `applic
     "value": {
         "id": "id_string",
         "text": "line_text",
-        "group": "droup_string"
+        "group": "group_string"
     }
 }
 ```
@@ -82,7 +82,7 @@ After start it launches the `application` specified in "-proxy-cmd". The `applic
         "line": {
             "id": "id_string",
             "text": "line_text",
-            "group": "droup_string"
+            "group": "group_string"
         }
     }
 }
