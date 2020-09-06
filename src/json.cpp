@@ -256,6 +256,10 @@ Token* Json::NewToken(TokenType type, char* start, char* end) {
         for (uint32_t i=0; i!=m_tokensCount; ++i) {
             tokens[i] = m_tokens[i];
         }
+        if (m_parent != nullptr) {
+            auto parentIndex = std::distance(m_tokens, m_parent);
+            m_parent = &tokens[parentIndex];
+        }
         delete[] m_tokens;
         m_tokens = tokens;
     }
