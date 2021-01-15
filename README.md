@@ -72,7 +72,7 @@ After start it launches the `application` specified in "-proxy-cmd". The `applic
 }
 ```
 
-- When the hotkey is pressed (see the rofi documentation for options "-kb-custom-1" ... "-kb-custom-19"), the plugin sends a "key_press" message with the code "custom_1" .. "custom_19" (if interception for pressing `Escape` is allowed  then rofi will not close, but will send a message about the pressed key with the code" cancel "). Currently displayed line will be sent in the value of the "line" field. For example:
+- When the hotkey is pressed (see the rofi documentation for options "-kb-custom-1" ... "-kb-custom-19"), the plugin sends a "key_press" message with the code "custom_1" .. "custom_19" (if interception for pressing `Escape` is allowed  then rofi will not close, but will send a message about the pressed key with the code "cancel"). Currently displayed line will be sent in the value of the "line" field. For example:
 
 ```json
 {
